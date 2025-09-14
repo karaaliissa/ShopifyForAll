@@ -1,0 +1,44 @@
+<div *ngIf="loading">Loading…</div>
+<div *ngIf="!loading && data">
+    <h3>Order {{ data.name }}</h3>
+    <p><b>Date:</b> {{ data.date | date:'short' }}</p>
+    <p><b>Status:</b> {{ data.status }}</p>
+    <p><b>Total:</b> {{ data.total | number:'1.2-2' }}</p>
+
+    <h5>Shipping Address</h5>
+    <div *ngIf="data.address; else noaddr">
+        {{ data.address.firstName }} {{ data.address.lastName }}<br>
+        {{ data.address.address1 }} {{ data.address.address2 }}<br>
+        {{ data.address.city }}, {{ data.address.province }} {{ data.address.zip }}<br>
+        {{ data.address.country }} – {{ data.address.phone }}
+    </div>
+    <ng-template #noaddr>No shipping address.</ng-template>
+</div>
+
+<h5 class="mt-3">Items</h5>
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Variant</th>
+            <th class="text-end">Qty</th>
+            <th class="text-end">Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let li of data?.items">
+            <td>{{ li.title }}</td>
+            <td>{{ li.variantTitle }}</td>
+            <td class="text-end">{{ li.quantity }}</td>
+            <td class="text-end">${{ li.price | number:'1.2-2' }}</td>
+          </tr>
+          
+    </tbody>
+</table>
+
+<h5 *ngIf="data.payments?.length">Payments</h5>
+<ul *ngIf="data.payments?.length">
+    <li *ngFor="let p of data.payments">
+        {{ p.gateway }} – {{ p.status }} – {{ p.currency }} ${{ p.amount | number:'1.2-2' }}
+    </li>
+</ul>

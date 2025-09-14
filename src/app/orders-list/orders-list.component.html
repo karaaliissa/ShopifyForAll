@@ -1,0 +1,32 @@
+<div class="card shadow-sm p-3">
+    <h3>📦 Shopify Orders</h3>
+  
+    <div *ngIf="loading">Loading...</div>
+  
+    <table class="table table-striped" *ngIf="!loading">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Date</th>
+          <th>Customer</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let order of orders">
+          <!-- <td>{{ order.name }}</td> -->
+          <td>
+            <a [routerLink]="['/orders', order.orderId]">{{ order.name }}</a>
+          </td>
+          
+          <td>{{ order.date | date:'short' }}</td>
+          <td>{{ order.customerName || '-' }}</td>
+          <td>\${{ order.total || 0 | number:'1.2-2' }}</td>
+          <td><span [class]="getStatusBadge(order.status)">{{ order.status || 'N/A' }}</span></td>
+        </tr>
+        
+      </tbody>
+    </table>
+  </div>
+  

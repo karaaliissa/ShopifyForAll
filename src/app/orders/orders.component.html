@@ -1,0 +1,36 @@
+<div class="p-4">
+    <h2>Orders</h2>
+  
+    <button (click)="fetch()" [disabled]="loading">Reload</button>
+  
+    <div *ngIf="loading">Loading…</div>
+    <div *ngIf="error" style="color:crimson">{{ error }}</div>
+  
+    <table *ngIf="!loading && orders?.length" border="1" cellspacing="0" cellpadding="6">
+      <thead>
+        <tr>
+          <th>Shop</th>
+          <th>Order ID</th>
+          <th>Order Name</th>
+          <th>Created</th>
+          <th>Total</th>
+          <th>Currency</th>
+          <th>Customer Email</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of orders">
+          <td><a [href]="'https://' + o.SHOP_DOMAIN" target="_blank">{{ o.SHOP_DOMAIN }}</a></td>
+          <td>{{ o.ORDER_ID }}</td>
+          <td>{{ o.ORDER_NAME }}</td>
+          <td>{{ o.CREATED_AT | date:'medium' }}</td>
+          <td>{{ o.TOTAL }}</td>
+          <td>{{ o.CURRENCY }}</td>
+          <td>{{ o.CUSTOMER_EMAIL }}</td>
+        </tr>
+      </tbody>
+    </table>
+  
+    <div *ngIf="!loading && !orders?.length">No orders yet.</div>
+  </div>
+  
