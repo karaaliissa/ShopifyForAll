@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { OrdersService } from '../services/orders.service';
 import { Order } from '../models/order';
-import { CommonModule , DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { interval, switchMap, startWith } from 'rxjs';
 
 @Component({
@@ -15,14 +15,14 @@ export class OrdersComponent implements OnInit {
   loading = false;
   error = '';
 
-  constructor(private ordersSvc: OrdersService) {}
+  constructor(private ordersSvc: OrdersService) { }
 
   ngOnInit() {
     interval(15000).pipe(
       startWith(0),
       switchMap(() => this.ordersSvc.getOrders())
     ).subscribe({
-      next: items => this.orders = items.items,
+      next: items => this.orders = items,
       error: err => this.error = err?.message ?? 'Failed to load'
     });
     this.fetch();
@@ -33,7 +33,7 @@ export class OrdersComponent implements OnInit {
     this.error = '';
     this.ordersSvc.getOrders().subscribe({
       next: (items) => {
-        this.orders = items.items;
+        this.orders = items;
         this.loading = false;
       },
       error: (err) => {
