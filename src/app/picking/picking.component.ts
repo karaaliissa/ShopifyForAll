@@ -3,7 +3,7 @@ import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PickingService, PickingRow } from '../services/picking.service';
-
+import { environment } from '../environments/environment';
 @Component({
   selector: 'app-picking',
   standalone: true,
@@ -48,11 +48,8 @@ print() {
   const params = new URLSearchParams();
   params.set('shop', this.shop);
   if (this.q()?.trim()) params.set('q', this.q().trim());
-  // optionally pass selected order ids if you filter by selection
-  // params.set('orders', this.selectedOrderIds.join(','));
-  const url = `/api/print/picking?` + params.toString(); // use proxy in dev
-  window.open(url, '_blank');
-}
 
-  printPage() { window.print(); }
+  const url = `${environment.API_BASE_URL}/api/print/picking?${params.toString()}`;
+  window.open(url, '_blank', 'noopener'); // top-level navigation → CORS not needed
+}
 }
