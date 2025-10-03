@@ -43,14 +43,15 @@ export class PickingComponent implements OnInit {
         error: e => { this.error = e?.message ?? 'Failed to load'; this.loading = false; }
       });
   }
-// picking.component.ts (add method)
+// src/app/picking/picking.component.ts
 print() {
   const params = new URLSearchParams();
   params.set('shop', this.shop);
   if (this.q()?.trim()) params.set('q', this.q().trim());
 
-  // const url = `${environment.API_BASE_URL}/api/print/picking?${params.toString()}`;
-  const url = `${environment.API_BASE_URL}/api/print-picking?${params.toString()}`;
-  window.open(url, '_blank', 'noopener'); // top-level navigation → CORS not needed
+  // NEW endpoint:
+  const url = `${environment.API_BASE_URL}/api/print/picking?${params.toString()}`;
+  window.open(url, '_blank', 'noopener');
 }
+
 }
