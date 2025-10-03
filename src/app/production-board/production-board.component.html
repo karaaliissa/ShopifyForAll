@@ -1,0 +1,39 @@
+<div class="prod-page">
+    <div class="toolbar">
+      <h1>Production</h1>
+      <div class="filters">
+        <input [(ngModel)]="shop" placeholder="shop domain">
+        <input [(ngModel)]="date" type="date">
+        <button (click)="refreshAll()" [disabled]="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
+      </div>
+      <div class="error" *ngIf="error">{{ error }}</div>
+    </div>
+  
+    <div class="board">
+      <div class="col" *ngFor="let s of ['cutting','sewing','qa_ready','packed']">
+        <div class="col-head">
+          <span class="title">{{ s }}</span>
+          <span class="count">{{ columns()[s].length || 0 }}</span>
+        </div>
+  
+        <div class="card" *ngFor="let w of columns()[s]">
+          <div class="name">
+            <strong>{{ w.TITLE }}</strong>
+            <span *ngIf="w.VARIANT_TITLE" class="muted">({{ w.VARIANT_TITLE }})</span>
+            <span *ngIf="w.SKU" class="sku">{{ w.SKU }}</span>
+          </div>
+          <div class="meta">
+            <span>#{{ w.ORDER_ID }}</span>
+            <span>Qty: {{ w.QTY }}</span>
+            <span>Start: {{ w.START_TS | date:'short' }}</span>
+          </div>
+  
+          <div class="actions">
+            <button class="secondary" (click)="markDone(w)">Done</button>
+            <button class="primary" *ngIf="nextStage(s) as ns" (click)="moveTo(ns, w)">Move → {{ ns }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  

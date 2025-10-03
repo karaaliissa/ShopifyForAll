@@ -183,7 +183,6 @@ export class OrdersService {
         shareReplay(1)
       );
   }
-  
 
   // Same client-side filters, but now over the *typed* Order model
   private clientFilter(rows: Order[], o?: GetOrdersOptions): Order[] {

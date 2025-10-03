@@ -1,0 +1,39 @@
+<!-- src/app/picking/picking.component.html -->
+<div class="picking-page">
+    <div class="header no-print">
+      <h1>Picking List</h1>
+      <div class="filters">
+        <input [(ngModel)]="shop" placeholder="shop domain" />
+        <input [(ngModel)]="from" type="date" />
+        <input [(ngModel)]="to" type="date" />
+        <input [(ngModel)]="q" placeholder="search (SKU / title / variant)" />
+        <button (click)="load()" [disabled]="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
+        <button class="primary" (click)="printPage()">🖨 Print</button>
+      </div>
+      <div class="muted" *ngIf="!loading">{{ filtered().length }} items</div>
+      <div class="error" *ngIf="error">{{ error }}</div>
+    </div>
+  
+    <div class="grid">
+      <div class="card" *ngFor="let r of filtered()">
+        <img *ngIf="r.IMAGE" [src]="r.IMAGE" alt="" />
+        <div class="info">
+          <div class="title">
+            <span class="sku" *ngIf="r.SKU">{{ r.SKU }}</span>
+            <span class="name">{{ r.TITLE }}</span>
+            <span class="variant" *ngIf="r.VARIANT_TITLE">({{ r.VARIANT_TITLE }})</span>
+          </div>
+          <div class="qty">Qty: <strong>{{ r.TOTAL_QTY }}</strong></div>
+          <div class="orders">
+            <span *ngFor="let o of r.ORDERS" class="tag">{{ o }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Print footer -->
+    <div class="print-footer only-print">
+        Printed at: {{ now | date:'medium' }} — Shop: {{ shop }}
+      </div>      
+  </div>
+  

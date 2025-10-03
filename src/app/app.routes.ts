@@ -1,12 +1,10 @@
 import { Routes } from '@angular/router';
-// ❌ remove this eager import
-// import { OrdersBoardComponent } from './orders-board/orders-board.component';
-import { OrdersListComponent } from './orders-list/orders-list.component';
 import { OrdersComponent } from './orders/orders.component';
+import { OrdersBoardComponent } from './orders-board/orders-board.component';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', component: OrdersComponent },
-  { path: 'orders', component: OrdersListComponent },
+  { path: '', pathMatch: 'full', component: OrdersBoardComponent },
+  // { path: 'orders', component: OrdersListComponent },
 
   // ✅ use lazy for the board and keep only one route to it
   {
@@ -21,10 +19,12 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./orders-board/orders-board.component').then(m => m.OrdersBoardComponent),
   },
-
   {
-    path: 'orders/:id',
-    loadComponent: () =>
-      import('./order-detail/order-detail.component').then(m => m.OrderDetailComponent),
+    path: 'picking',
+    loadComponent: () => import('./picking/picking.component').then(m => m.PickingComponent),
+  },
+  {
+    path: 'production',
+    loadComponent: () => import('./production-board/production-board.component').then(m => m.ProductionBoardComponent),
   },
 ];
