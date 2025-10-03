@@ -43,6 +43,16 @@ export class PickingComponent implements OnInit {
         error: e => { this.error = e?.message ?? 'Failed to load'; this.loading = false; }
       });
   }
+// picking.component.ts (add method)
+print() {
+  const params = new URLSearchParams();
+  params.set('shop', this.shop);
+  if (this.q()?.trim()) params.set('q', this.q().trim());
+  // optionally pass selected order ids if you filter by selection
+  // params.set('orders', this.selectedOrderIds.join(','));
+  const url = `/api/print/picking?` + params.toString(); // use proxy in dev
+  window.open(url, '_blank');
+}
 
   printPage() { window.print(); }
 }

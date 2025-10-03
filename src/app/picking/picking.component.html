@@ -9,6 +9,8 @@
         <input [(ngModel)]="q" placeholder="search (SKU / title / variant)" />
         <button (click)="load()" [disabled]="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
         <button class="primary" (click)="printPage()">🖨 Print</button>
+        <button class="btn primary" (click)="print()">🖨 Print</button>
+
       </div>
       <div class="muted" *ngIf="!loading">{{ filtered().length }} items</div>
       <div class="error" *ngIf="error">{{ error }}</div>
