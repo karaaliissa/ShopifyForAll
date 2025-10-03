@@ -26,4 +26,26 @@ export class ProductionService {
   done(workId: string) {
     return this.http.post<{ok:boolean}>(`${this.base}/api/work/done`, { workId });
   }
+  createRun(payload: {
+    date?: string; driverId: string;
+    orderStops: {orderId:string; customerName?:string; address?:string; phone?:string; codAmount?:number; eta?:string; notes?:string}[];
+    notes?: string; assigner?: string;
+  })
+   {
+    return this.http.post<{ok:boolean; runId:string; stops:number}>(`${this.base}/api/runs/create`, payload);
+  }
+
+  getRunForDriver(driverId: string, date?: string) {
+    const params = new HttpParams({ fromObject: { driverId, ...(date?{date}:{}) } });
+    return this.http.get<{ok:boolean; run:any; stops:any[]}>(`${this.base}/api/runs/for-driver`, { params });
+  }
+
+  stopStatus(runId: string, stopId: number, status: string, codAmount?: number) {
+    return this.http.post<{ok:boolean}>(`${this.base}/api/runs/stop-status`, { runId, stopId, status, codAmount });
+  }
+
+  remit(runId: string, driverId: string, amount: number, receiver: string) {
+    return this.http.post<{ok:boolean}>(`${this.base}/api/runs/remit`, { runId, driverId, amount, receiver });
+  }
+
 }

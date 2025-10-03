@@ -1,0 +1,9 @@
+{
+    "/api": {
+      "target": "https://shopify-sheets-backend.vercel.app",
+      "secure": true,
+      "changeOrigin": true,
+      "logLevel": "info"
+    }
+  }
+  

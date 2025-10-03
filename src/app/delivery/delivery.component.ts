@@ -17,7 +17,9 @@ export class DeliveryComponent implements OnInit {
   selected = new Set<string>(); // orderIds
   today = new Date().toISOString().slice(0,10);
   loading = false; error = '';
-
+  trackOrder = (_: number, o: Order) => o.orderId;
+  trackRun   = (_: number, r: any)    => r.RUN_ID;
+  trackStop  = (_: number, s: any)    => s.RUN_ID + '|' + s.STOP_ID;
   orders: Order[] = [];
   runs = signal<any[]>([]);
 
