@@ -1,157 +1,129 @@
-<div class="toolbar">
+<div class="orders-page">
+
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <h1>Orderly Print</h1>
+        <p *ngIf="!loading">{{ orders.length }} orders loaded</p>
+        <p *ngIf="loading">Loading orders…</p>
+        <p *ngIf="error" class="error">{{ error }}</p>
+      </div>
+      <button class="btn primary" (click)="fetch()" [disabled]="loading">
+        {{ loading ? 'Loading…' : 'Fetch orders' }}
+      </button>
+    </div>
+  
+    <!-- Filters -->
     <div class="filters">
-      <div class="filter">
-        <label>Status:</label>
-        <select [(ngModel)]="status()">
-          <option value="">Open</option>
-          <option value="unfulfilled">Unfulfilled</option>
-          <option value="partial">Partial</option>
-          <option value="fulfilled">Fulfilled</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </div>
-  
-      <div class="filter">
-        <label>Payment:</label>
-        <select [(ngModel)]="payment()">
-          <option value="">Any</option>
-          <option value="paid">Paid</option>
-          <option value="pending">Pending</option>
-          <option value="refunded">Refunded</option>
-          <option value="voided">Voided</option>
-        </select>
-      </div>
-  
-      <div class="filter">
-        <label>Fulfillment:</label>
-        <select [(ngModel)]="fulfillment()">
-          <option value="partial">Partial or unfulfilled</option>
-          <option value="any">Any</option>
-        </select>
-      </div>
-  
-      <div class="filter">
-        <input type="date" [(ngModel)]="dateFrom()" />
-        <span>–</span>
-        <input type="date" [(ngModel)]="dateTo()" />
-      </div>
-  
-      <label class="filter chk">
-        <input type="checkbox" [(ngModel)]="hideComplete()" />
-        Hide complete
-      </label>
-  
-      <button class="btn" (click)="fetch()">Fetch orders</button>
-    </div>
-  
-    <div class="actions">
-      <input class="search" placeholder="Filter displayed orders"
-             [(ngModel)]="search()" (ngModelChange)="fetch()"/>
-      <select [(ngModel)]="tagFilter()">
-        <option value="">Tagged</option>
-        <option value="not">Not tagged</option>
+      <select>
+        <option>Status: Any</option>
+        <option>Status: Open</option>
+        <option>Status: Closed</option>
       </select>
-      <button class="btn icon" (click)="onlyNotTagged.set(tagFilter()==='not'); fetch()">⟳</button>
+      <select>
+        <option>Payment: Any</option>
+        <option>Paid</option>
+        <option>Pending</option>
+      </select>
+      <select>
+        <option>Fulfillment: Any</option>
+        <option>Unfulfilled</option>
+        <option>Fulfilled</option>
+      </select>
+      <input type="date" />
+      <label>
+        <input type="checkbox" /> Hide complete
+      </label>
+    </div>
   
-      <div class="bulk-tags">
-        <span>Tag selected orders</span>
-        <div class="menu">
-          <button (click)="bulkTag('Complete')">Complete</button>
-          <button (click)="bulkTag('Processing')">Processing</button>
-          <button (click)="bulkTag('Shipped')">Shipped</button>
-          <button (click)="bulkTag('Cancel')">Cancel</button>
-        </div>
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="actions-left">
+        <button class="btn">Picking list</button>
+        <button class="btn">Packing slips</button>
+        <button class="btn">Invoices</button>
+        <button class="btn">Labels</button>
+      </div>
+      <div class="actions-right">
+        <button class="btn success">Fulfill</button>
+        <button class="btn info">Export</button>
+        <button class="btn danger">Archive</button>
       </div>
     </div>
-  </div>
   
-  <div class="tabs">
-    <button class="tab active">Picking list</button>
-    <button class="tab">Packing slips</button>
-    <button class="tab">Invoices</button>
-    <button class="tab">Labels</button>
-    <span class="count">{{ orders().length }}</span>
-  </div>
-  
-  <div class="table-wrap" *ngIf="!loading(); else loadingTmpl">
-    <table class="orders">
-      <thead>
-        <tr>
-          <th width="36"><input type="checkbox" (change)="toggleSelectAll($event)"/></th>
-          <th>Order</th>
-          <th>Product</th>
-          <th>Notes</th>
-          <th>Ship To</th>
-          <th>Method</th>
-          <th>Tags</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let o of orders()">
-          <td>
-            <input type="checkbox" [checked]="selected()[key(o)]" (change)="toggleRow(o, $event)"/>
-          </td>
-  
-          <td class="order">
-            <a [href]="'https://' + o.SHOP_DOMAIN + '/admin/orders/' + o.ORDER_ID" target="_blank">{{ o.ORDER_NAME || ('#' + o.ORDER_ID) }}</a>
-            <div class="meta">{{ o.CREATED_AT | date:'MMMM d, y' }}</div>
-            <div class="chips">
-              <span class="chip" *ngFor="let b of badgeSet(o)">{{ b }}</span>
-            </div>
-          </td>
-  
-          <td class="product">
-            <!-- product summary from /api/items -->
-            <ng-container *ngIf="api.getOrderItems(o.SHOP_DOMAIN, o.ORDER_ID) | async as items">
-              <div *ngIf="items?.length; else noItems">
-                <div class="prod" *ngFor="let it of items | slice:0:3">
-                  <span class="title">{{ it.TITLE }}</span>
-                  <span class="variant" *ngIf="it.VARIANT_TITLE">/ {{ it.VARIANT_TITLE }}</span>
-                  <span class="qty">x {{ it.QUANTITY }}</span>
+    <!-- Orders Table -->
+    <div class="card table-wrapper" *ngIf="!loading && orders?.length">
+      <table>
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Product</th>
+            <th>Notes</th>
+            <th>Ship To</th>
+            <th>Method</th>
+            <th>Tags</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let o of orders">
+            <td>
+              <div class="order-id">
+                <input type="checkbox" />
+                <div>
+                  <div class="link">{{ o.orderName || o.orderId }}</div>
+                  <div class="date">{{ o.createdAt | date:'medium' }}</div>
+                  <div class="badges">
+                    <span class="badge open">{{ o.fulfillmentStatus || 'Open' }}</span>
+                    <span class="badge" [ngClass]="o.financialStatus?.toLowerCase()">{{ o.financialStatus }}</span>
+                  </div>
                 </div>
-                <div class="more" *ngIf="items.length > 3">+{{ items.length - 3 }} more</div>
               </div>
-              <ng-template #noItems>—</ng-template>
-            </ng-container>
-          </td>
-  
-          <td class="notes">x 1</td>
-  
-          <td class="shipto">
-            <div class="bold">{{ o.SHIP_COUNTRY || '' }}</div>
-            <div>{{ o.SHIP_NAME }}</div>
-            <div>{{ o.SHIP_ADDRESS1 }} {{ o.SHIP_ADDRESS2 }}</div>
-            <div>{{ o.SHIP_CITY }} {{ o.SHIP_PROVINCE }}</div>
-            <div>{{ o.SHIP_ZIP }}</div>
-            <div *ngIf="o.SHIP_PHONE">Tel: {{ o.SHIP_PHONE }}</div>
-          </td>
-  
-          <td class="method">
-            <div><b>Shipping:</b> {{ o.SHIPPING_METHOD || '-' }}</div>
-            <div><b>Payment:</b> {{ o.PAYMENT_GATEWAY || (o.FINANCIAL_STATUS | titlecase) || '-' }}</div>
-          </td>
-  
-          <td class="tags">
-            <div class="chips">
-              <span class="chip tag" *ngFor="let t of tagChips(o)">{{ t }}</span>
-            </div>
-  
-            <div class="tag-menu">
-              <button class="btn small">Add tag ▾</button>
-              <div class="menu">
-                <button (click)="applyTag(o,'Complete')">Complete</button>
-                <button (click)="applyTag(o,'Processing')">Processing</button>
-                <button (click)="applyTag(o,'Shipped')">Shipped</button>
-                <button (click)="applyTag(o,'Cancel')">Cancel</button>
+            </td>
+            <td>
+              <div *ngFor="let p of o.items" class="product-line">
+                <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
+                <div class="product-text">
+                  <span class="product-name">{{ p.TITLE }}</span>
+                  <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
+                  <span class="muted">x{{ p.QUANTITY }}</span>
+                </div>
               </div>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            </td>
+            
+              
+            <!-- <td></td>
+            <td>–</td> -->
+            <td>
+              <div class="customer">{{ o.shipTo?.name }}</div>
+              <div class="muted">{{ o.shipTo?.address1 }} {{ o.shipTo?.city }}</div>
+              <div class="muted">Tel: {{ o.shipTo?.phone }}</div>
+            </td>
+            <td class="muted">{{ o.shippingMethod }}</td>
+            <td>
+              <div class="badges">
+                <span *ngFor="let t of getTags(o.tags)"
+                class="tag"
+                [ngClass]="t.toLowerCase()">
+            {{ t }}
+          </span>
+          
+              
+              </div>
+              <select (change)="onTagChange(o, $event)">
+                <option value="">Add tag</option>
+                <option>Complete</option>
+                <option>Processing</option>
+                <option>Shipped</option>
+                <option>Cancel</option>
+              </select>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  
+    <div *ngIf="!loading && !orders?.length" class="empty">
+      No orders yet.
+    </div>
   </div>
-  
-  <ng-template #loadingTmpl>
-    <div class="loading">Loading…</div>
-  </ng-template>
   

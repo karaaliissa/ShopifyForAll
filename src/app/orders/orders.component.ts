@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { OrdersService } from '../services/orders.service';
-import { Order } from '../models/order';
+import { Order } from '../services/orders.service';
 import { CommonModule, DatePipe } from '@angular/common';
 import { interval, switchMap, startWith } from 'rxjs';
 

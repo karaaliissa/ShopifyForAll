@@ -20,13 +20,13 @@
       </thead>
       <tbody>
         <tr *ngFor="let o of orders">
-          <td><a [href]="'https://' + o.SHOP_DOMAIN" target="_blank">{{ o.SHOP_DOMAIN }}</a></td>
-          <td>{{ o.ORDER_ID }}</td>
-          <td>{{ o.ORDER_NAME }}</td>
-          <td>{{ o.CREATED_AT | date:'medium' }}</td>
-          <td>{{ o.TOTAL }}</td>
-          <td>{{ o.CURRENCY }}</td>
-          <td>{{ o.CUSTOMER_EMAIL }}</td>
+          <td><a [href]="'https://' + o.shopDomain" target="_blank">{{ o.shopDomain }}</a></td>
+          <td>{{ o.orderId }}</td>
+          <td>{{ o.orderName }}</td>
+          <td>{{ o.createdAt | date:'medium' }}</td>
+          <td>{{ o.total }}</td>
+          <td>{{ o.currency }}</td>
+          <td>{{ o.customerEmail }}</td>
         </tr>
       </tbody>
     </table>
