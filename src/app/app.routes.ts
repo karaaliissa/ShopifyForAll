@@ -4,16 +4,7 @@ import { OrdersBoardComponent } from './orders-board/orders-board.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: OrdersBoardComponent },
-  // { path: 'orders', component: OrdersListComponent },
 
-  // ✅ use lazy for the board and keep only one route to it
-  {
-    path: 'orderss', // keep your existing URL
-    loadComponent: () =>
-      import('./orders-board/orders-board.component').then(m => m.OrdersBoardComponent),
-  },
-
-  // (optional alias)
   {
     path: 'board',
     loadComponent: () =>
@@ -27,4 +18,8 @@ export const routes: Routes = [
     path: 'production',
     loadComponent: () => import('./production-board/production-board.component').then(m => m.ProductionBoardComponent),
   },
+  { path: 'delivery', loadComponent: () => import('./delivery/delivery.component').then(m => m.DeliveryComponent) },
+  
+  { path: 'driver', loadComponent: () => import('./driver/driver.component').then(m => m.DriverComponent) }
+
 ];

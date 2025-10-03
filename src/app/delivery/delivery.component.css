@@ -1,0 +1,10 @@
+.page { padding: 1rem; font-family: system-ui, sans-serif; }
+.toolbar { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem; }
+.grid { display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.card { border:1px solid #e5e7eb; border-radius:10px; padding:.75rem; background:#fff; }
+.list { display:flex; flex-direction:column; gap:.35rem; max-height:60vh; overflow:auto; }
+.run { border-top:1px solid #e5e7eb; padding-top:.5rem; margin-top:.5rem; }
+.run-head { font-weight:600; margin-bottom:.25rem; }
+.muted { color:#6b7280; }
+.error { color:#b91c1c; }
+@media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }

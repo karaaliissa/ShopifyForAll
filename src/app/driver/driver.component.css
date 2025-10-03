@@ -1,0 +1,19 @@
+.driver-page { padding: 1rem; font-family: system-ui, sans-serif; }
+.topbar .row { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin:.25rem 0 .75rem; }
+.error { color:#b91c1c; }
+
+.run-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; margin:.75rem 0; padding:.75rem; }
+.run-head { font-weight:600; margin-bottom:.5rem; }
+
+.stop { display:grid; grid-template-columns: 1fr auto; gap:.75rem; padding:.6rem 0; border-top:1px solid #f3f4f6; }
+.stop:first-child { border-top:none; }
+.main .line { margin:2px 0; }
+.muted { color:#6b7280; }
+
+.actions { display:flex; gap:.35rem; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+.cod { width: 7rem; padding:.35rem .5rem; border:1px solid #d1d5db; border-radius:8px; }
+button { padding:.4rem .65rem; border-radius:8px; border:1px solid #d1d5db; background:#fff; cursor:pointer; }
+button.primary { background:#111827; color:#fff; border:none; }
+button.danger  { background:#dc2626; color:#fff; border:none; }
+.status { color:#6b7280; margin-left:.35rem; }
+@media (max-width: 800px){ .stop{ grid-template-columns: 1fr; } .actions{ justify-content:flex-start; } }

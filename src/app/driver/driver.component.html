@@ -1,0 +1,44 @@
+<!-- src/app/driver/driver.component.html -->
+<div class="driver-page">
+    <div class="topbar">
+      <h1>Driver</h1>
+      <div class="row">
+        <input placeholder="Driver ID / phone" [ngModel]="driverId" (ngModelChange)="setDriverId($event)" />
+        <input type="date" [(ngModel)]="date" (change)="refresh()" />
+        <button (click)="refresh()" [disabled]="loading">{{ loading ? '...' : 'Refresh' }}</button>
+      </div>
+      <div class="error" *ngIf="error">{{ error }}</div>
+    </div>
+  
+    <div *ngFor="let r of runs()" class="run-card">
+      <div class="run-head">Run {{ r.RUN_ID }} — {{ r.DATE }} — {{ r.STATUS }}</div>
+  
+      <div *ngFor="let s of r.STOPS" class="stop">
+        <div class="main">
+          <div class="line">
+            <strong>#{{ s.ORDER_ID }}</strong> — {{ s.CUSTOMER_NAME }}
+          </div>
+          <div class="line muted">{{ s.ADDRESS }}</div>
+          <div class="line">
+            <a [href]="telLink(s.PHONE)">Call</a> ·
+            <a *ngIf="waLink(s.PHONE)" [href]="waLink(s.PHONE)">WhatsApp</a> ·
+            <a [href]="mapLink(s.ADDRESS)" target="_blank">Map</a>
+          </div>
+        </div>
+  
+        <div class="actions">
+          <input class="cod" type="number" step="0.01"
+                 placeholder="COD"
+                 [(ngModel)]="cod[wKey(r.RUN_ID, s.STOP_ID)]"
+                 [value]="s.COD_AMOUNT" />
+          <button (click)="setStatus(r.RUN_ID, s.STOP_ID, 'out_for_delivery')">Out</button>
+          <button class="primary" (click)="setStatus(r.RUN_ID, s.STOP_ID, 'delivered')">Delivered</button>
+          <button class="danger" (click)="setStatus(r.RUN_ID, s.STOP_ID, 'delayed')">Delayed</button>
+          <span class="status">{{ s.STATUS }}</span>
+        </div>
+      </div>
+    </div>
+  
+    <div class="empty" *ngIf="!loading && runs().length===0">No runs found for this driver/date.</div>
+  </div>
+  
