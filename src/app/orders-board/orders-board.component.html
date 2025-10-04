@@ -35,7 +35,10 @@
         <input type="checkbox" /> Hide complete
       </label>
     </div>
-  
+  <!-- add to orders component toolbar -->
+<input [(ngModel)]="exportShop" placeholder="shop domain" />
+<input type="date" [(ngModel)]="exportDate" />
+<button (click)="exportShipday()">Export Shipday CSV</button>
     <!-- Toolbar -->
     <div class="toolbar">
       <div class="actions-left">
