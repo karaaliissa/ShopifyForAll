@@ -17,9 +17,5 @@ export const routes: Routes = [
   {
     path: 'production',
     loadComponent: () => import('./production-board/production-board.component').then(m => m.ProductionBoardComponent),
-  },
-  { path: 'delivery', loadComponent: () => import('./delivery/delivery.component').then(m => m.DeliveryComponent) },
-  
-  { path: 'driver', loadComponent: () => import('./driver/driver.component').then(m => m.DriverComponent) }
-
+  }
 ];
