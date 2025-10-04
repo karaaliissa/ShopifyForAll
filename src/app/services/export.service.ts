@@ -11,10 +11,11 @@ export class ExportService {
 
   shipday(shop: string, date: string): Observable<HttpResponse<Blob>> {
     const params = new HttpParams({ fromObject: { shop, date } });
-    return this.http.get(`${this.base}/api/export/shipday`, {
+    return this.http.get(`${this.base}/api/shipday`, {  // <-- changed path
       params,
       responseType: 'blob',
       observe: 'response'
     });
   }
+  
 }
