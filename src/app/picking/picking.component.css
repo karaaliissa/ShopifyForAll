@@ -33,16 +33,32 @@ button:disabled { opacity:.6; cursor:default; }
 /* src/app/picking/picking.component.css */
 
 /* Hide controls on paper, keep the grid */
-@media print {
-  .no-print { display: none !important; }
-  .only-print { display: block !important; }
+/* existing card styles… */
 
-  /* avoid items splitting across pages */
-  .card { break-inside: avoid; }
-
-  /* optional: remove page padding if you added any wrapper padding */
-  body { margin: 0; }
+.ship {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  vertical-align: middle;
 }
 
-/* default: only-print content stays hidden on screen */
-.only-print { display: none; }
+.ship-express {
+  background: #fee2e2;     /* light red */
+  color: #b91c1c;          /* red text */
+  border-color: #fecaca;   /* subtle border */
+}
+
+@media print {
+  .no-print { display: none; }
+  .only-print { display: initial; }
+  .card { break-inside: avoid; }
+  /* make sure the express pill remains visible on print too */
+  .ship-express {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+

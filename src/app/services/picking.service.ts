@@ -11,6 +11,7 @@ export interface PickingRow {
   IMAGE: string;
   TOTAL_QTY: number;
   ORDERS: string[]; // order names (#3827…)
+  HAS_EXPRESS?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

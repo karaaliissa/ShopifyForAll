@@ -24,6 +24,7 @@
             <span class="sku" *ngIf="r.SKU">{{ r.SKU }}</span>
             <span class="name">{{ r.TITLE }}</span>
             <span class="variant" *ngIf="r.VARIANT_TITLE">({{ r.VARIANT_TITLE }})</span>
+ +          <span *ngIf="r.HAS_EXPRESS" class="ship ship-express">Express</span>
           </div>
           <div class="qty">Qty: <strong>{{ r.TOTAL_QTY }}</strong></div>
           <div class="orders">
@@ -32,6 +33,7 @@
         </div>
       </div>
     </div>
+ 
   
     <!-- Print footer -->
     <div class="print-footer only-print">
