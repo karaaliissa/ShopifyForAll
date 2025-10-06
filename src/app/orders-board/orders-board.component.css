@@ -85,7 +85,10 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  text-align: right;
+  white-space: nowrap;
 }
+
 .table-wrapper th {
   background: #f3f4f6;
   text-align: left;
@@ -176,3 +179,123 @@ tr:hover { background: #f9fafb; }
 
 .product-name { font-weight: 500; }
 .muted { opacity: 0.7; }
+/* Layout containers */
+.orders-page .header,
+.orders-page .filters,
+.orders-page .toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.table-wrapper {
+  overflow: auto;
+  border-radius: 10px;
+}
+
+/* Table basics */
+.table-wrapper table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 980px; /* allow scroll on small widths */
+}
+
+.table-wrapper thead th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 1;
+  text-align: left;
+  font-weight: 600;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table-wrapper tbody td {
+  padding: 12px 14px;
+  vertical-align: top;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.table-wrapper tfoot td {
+  padding: 12px 14px;
+  border-top: 2px solid #e2e8f0;
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.num { text-align: right; white-space: nowrap; }
+
+/* Order cell content */
+.order-id .link { color: #2563eb; font-weight: 600; }
+.order-id .date { color: #64748b; font-size: 12px; margin-top: 2px; }
+
+/* Product lines */
+.product-line { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
+.product-line .thumb { width: 42px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; }
+
+/* Badges / tags */
+.badge, .tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 999px; margin: 2px 4px 0 0;
+  font-size: 12px; border: 1px solid transparent;
+}
+.badge.open { background:#e0f2fe; color:#075985; border-color:#bae6fd; }
+.badge.paid { background:#dcfce7; color:#166534; border-color:#bbf7d0; }
+.badge.pending { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+
+.tag-express, .ship-express {
+  background:#fee2e2; color:#b91c1c; border-color:#fecaca;
+}
+.tag-old, .ship-old {
+  background:#fef3c7; color:#92400e; border-color:#fde68a;
+}
+
+/* Responsive: turn rows into cards on narrow screens */
+@media (max-width: 900px) {
+  .table-wrapper table { min-width: 0; }
+  .table-wrapper thead { display: none; }
+  .table-wrapper tbody, .table-wrapper tr, .table-wrapper td { display: block; width: 100%; }
+  .table-wrapper tr { border:1px solid #e5e7eb; border-radius: 12px; padding: 10px; margin: 10px 0; }
+  .table-wrapper td { border: 0; padding: 6px 0; }
+  .table-wrapper td::before {
+    content: attr(data-label);
+    display: inline-block;
+    min-width: 110px;
+    font-weight: 600;
+    color: #475569;
+    margin-right: 8px;
+  }
+  .num { text-align: left; }
+}
+
+/* Print */
+@media print {
+  .header, .filters, .toolbar { display: none !important; }
+  .table-wrapper table { min-width: 0; }
+  .tag-express, .ship-express, .tag-old, .ship-old {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .text-express, .text-old,
+  .ship-express, .ship-old {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+/* Text accents for table cells */
+.text-express { color: #b91c1c; font-weight: 600; } /* red-700 */
+.text-old     { color: #92400e; font-weight: 600; } /* amber-800 */
+
+/* Pills already defined earlier; keep for completeness */
+.ship-express {
+  background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;
+  border-radius:999px; padding:0 6px; margin-left:6px; font-size:11px;
+}
+.ship-old {
+  background:#fef3c7; color:#92400e; border:1px solid #fde68a;
+  border-radius:999px; padding:0 6px; margin-left:6px; font-size:11px;
+}

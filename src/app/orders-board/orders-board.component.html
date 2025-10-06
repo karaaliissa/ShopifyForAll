@@ -1,140 +1,166 @@
 <div class="orders-page">
 
-    <!-- Header -->
-    <div class="header">
-      <div>
-        <h1>Orderly Print</h1>
-        <p *ngIf="!loading">{{ orders.length }} orders loaded</p>
-        <p *ngIf="loading">Loading orders…</p>
-        <p *ngIf="error" class="error">{{ error }}</p>
-      </div>
-      <button class="btn primary" (click)="fetch()" [disabled]="loading">
-        {{ loading ? 'Loading…' : 'Fetch orders' }}
-      </button>
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>Orderly Print</h1>
+      <p *ngIf="!loading">{{ orders.length }} orders loaded</p>
+      <p *ngIf="loading">Loading orders…</p>
+      <p *ngIf="error" class="error">{{ error }}</p>
     </div>
-  
-    <!-- Filters -->
-    <div class="filters">
-      <select>
-        <option>Status: Any</option>
-        <option>Status: Open</option>
-        <option>Status: Closed</option>
-      </select>
-      <select>
-        <option>Payment: Any</option>
-        <option>Paid</option>
-        <option>Pending</option>
-      </select>
-      <select>
-        <option>Fulfillment: Any</option>
-        <option>Unfulfilled</option>
-        <option>Fulfilled</option>
-      </select>
-      <input type="date" />
-      <label>
-        <input type="checkbox" /> Hide complete
-      </label>
-    </div>
+    <button class="btn primary" (click)="fetch()" [disabled]="loading">
+      {{ loading ? 'Loading…' : 'Fetch orders' }}
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <select>
+      <option>Status: Any</option>
+      <option>Status: Open</option>
+      <option>Status: Closed</option>
+    </select>
+    <select>
+      <option>Payment: Any</option>
+      <option>Paid</option>
+      <option>Pending</option>
+    </select>
+    <select>
+      <option>Fulfillment: Any</option>
+      <option>Unfulfilled</option>
+      <option>Fulfilled</option>
+    </select>
+    <input type="date" />
+    <label>
+      <input type="checkbox" /> Hide complete
+    </label>
+    <td colspan="6" class="num"><strong>Grand Total</strong></td>
+    <td class="num">
+      <ng-container *ngIf="totalsCurrency; else plainGrand">
+        {{ grandTotal | currency:totalsCurrency:'symbol' }}
+      </ng-container>
+      <ng-template #plainGrand>
+        {{ grandTotal | number:'1.0-2' }} {{ totalsCurrency || '' }}
+      </ng-template>
+    </td>
+  </div>
   <!-- add to orders component toolbar -->
-<input [(ngModel)]="exportShop" placeholder="shop domain" />
-<input type="date" [(ngModel)]="exportDate" />
-<button (click)="exportShipday()">Export Shipday CSV</button>
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <div class="actions-left">
-        <button class="btn">Picking list</button>
-        <button class="btn">Packing slips</button>
-        <button class="btn">Invoices</button>
-        <button class="btn">Labels</button>
-      </div>
-      <div class="actions-right">
-        <button class="btn success">Fulfill</button>
-        <button class="btn info">Export</button>
-        <button class="btn danger">Archive</button>
-      </div>
+  <input [(ngModel)]="exportShop" placeholder="shop domain" />
+  <input type="date" [(ngModel)]="exportDate" />
+  <button (click)="exportShipday()">Export Shipday CSV</button>
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="actions-left">
+      <button class="btn">Picking list</button>
+      <button class="btn">Packing slips</button>
+      <button class="btn">Invoices</button>
+      <button class="btn">Labels</button>
     </div>
-  
-    <!-- Orders Table -->
-    <div class="card table-wrapper" *ngIf="!loading && orders?.length">
-      <table>
-        <thead>
-          <tr>
-            <th>Order</th>
-            <th>Product</th>
-            <th>Notes</th>
-            <th>Ship To</th>
-            <th>Method</th>
-            <th>Tags</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let o of orders">
-            <td>
-              <div class="order-id">
-                <input type="checkbox" />
-                <div>
-                  <div class="link">{{ o.orderName || o.orderId }}</div>
-                  <div class="date">{{ o.createdAt | date:'medium' }}</div>
-                  <div class="badges">
-                    <span class="badge open">{{ o.fulfillmentStatus || 'Open' }}</span>
-                    <span class="badge" [ngClass]="o.financialStatus?.toLowerCase()">{{ o.financialStatus }}</span>
-                  </div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <!-- <div *ngFor="let p of o.items" class="product-line">
-                <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
-                <div class="product-text">
-                  <span class="product-name">{{ p.TITLE }}</span>
-                  <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
-                  <span class="muted">x{{ p.QUANTITY }}</span>
-                </div>
-              </div> -->
-              <div *ngFor="let p of (o.items || [])" class="product-line">
-                <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
-                <div class="product-text">
-                  <span class="product-name">{{ p.TITLE }}</span>
-                  <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
-                  <span class="muted">x{{ p.QUANTITY }}</span>
-                </div>
-              </div>
-            </td>
-            
-              
-            <!-- <td></td>
-            <td>–</td> -->
-            <td>
-              <div class="customer">{{ o.shipTo?.name }}</div>
-              <div class="muted">{{ o.shipTo?.address1 }} {{ o.shipTo?.city }}</div>
-              <div class="muted">Tel: {{ o.shipTo?.phone }}</div>
-            </td>
-            <td class="muted">{{ o.shippingMethod }}</td>
-            <td>
-              <div class="badges">
-                <span *ngFor="let t of getTags(o.tags)"
-                class="tag"
-                [ngClass]="t.toLowerCase()">
-            {{ t }}
-          </span>
-          
-              
-              </div>
-              <select (change)="onTagChange(o, $event)">
-                <option value="">Add tag</option>
-                <option>Complete</option>
-                <option>Processing</option>
-                <option>Shipped</option>
-                <option>Cancel</option>
-              </select>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  
-    <div *ngIf="!loading && !orders?.length" class="empty">
-      No orders yet.
+    <div class="actions-right">
+      <button class="btn success">Fulfill</button>
+      <button class="btn info">Export</button>
+      <button class="btn danger">Archive</button>
     </div>
   </div>
-  
+
+  <!-- Orders Table -->
+  <div class="card table-wrapper" *ngIf="!loading && orders?.length">
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Product</th>
+          <th>Total</th>
+          <!-- <th>Notes</th> -->
+          <th>Ship To</th>
+          <th>Method</th>
+          <th>Tags</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let o of orders">
+          <td>
+            <div class="order-id">
+              <!-- <input type="checkbox" /> -->
+              <div>
+
+                <div class="link" [ngClass]="{ 'text-old': isOld(o) }">
+                  {{ o.orderName || o.orderId }}
+                </div>
+                <div class="">{{ o.shipTo?.name }}</div>
+                <div class="muted">Tel: {{ o.shipTo?.phone }}</div>
+                <div class="date">{{ o.createdAt | date:'medium' }}</div>
+
+                <div class="badges">
+                  <span class="badge open">{{ o.fulfillmentStatus || 'Open' }}</span>
+                  <span class="badge" [ngClass]="o.financialStatus?.toLowerCase()">{{ o.financialStatus }}</span>
+                </div>
+              </div>
+            </div>
+          </td>
+
+
+          <td>
+            <div *ngFor="let p of (o.items || [])" class="product-line">
+              <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
+              <div class="product-text">
+                <span class="product-name">{{ p.TITLE }}</span>
+                <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
+                <span class="muted">x{{ p.QUANTITY }}</span>
+              </div>
+            </div>
+          </td>
+          <td class="num">
+            <!-- use currency pipe if your currency codes are standard (USD, EUR, AED...) -->
+            <ng-container *ngIf="o.currency; else plainTotal">
+              {{ o.total || 0 | currency:o.currency:'symbol' }}
+            </ng-container>
+            <ng-template #plainTotal>
+              {{ o.total || 0 | number:'1.0-2' }} {{ o.currency || '' }}
+            </ng-template>
+          </td>
+
+          <!-- <td></td>
+            <td>–</td> -->
+          <td>
+            <!-- <div class="customer">{{ o.shipTo?.name }}</div> -->
+            <div class="muted">{{ o.shipTo?.address1 }} {{ o.shipTo?.city }}</div>
+
+          </td>
+          <td [ngClass]="{ 'text-express': isExpress(o), 'text-old': isOld(o) }">
+            {{ o.shippingMethod }}
+            <span *ngIf="isExpress(o)" class="ship ship-express">Express</span>
+            <span *ngIf="isOld(o)" class="ship ship-old">OLD ORDER</span>
+          </td>
+          <td>
+            <div class="badges">
+              <span *ngFor="let t of getTags(o.tags)" class="tag" [ngClass]="t.toLowerCase()">
+                {{ t }}
+              </span>
+
+
+            </div>
+            <select (change)="onTagChange(o, $event)">
+              <option value="">Add tag</option>
+              <option>Complete</option>
+              <option>Processing</option>
+              <option>Shipped</option>
+              <option>Cancel</option>
+            </select>
+          </td>
+        </tr>
+      </tbody>
+      <!-- <tfoot>
+          <tr>
+           
+          </tr>
+        </tfoot> -->
+
+    </table>
+  </div>
+
+  <div *ngIf="!loading && !orders?.length" class="empty">
+    No orders yet.
+  </div>
+</div>

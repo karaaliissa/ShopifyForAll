@@ -46,6 +46,17 @@ export class OrdersBoardComponent implements OnInit {
       }
     });
   }
+  isExpress(o: Order): boolean {
+    return /\bexpress\b/i.test(o.shippingMethod || '');
+  }
+  isOld(o: Order): boolean {
+    const d = o.createdAt || o.updatedAt;
+    if (!d) return false;
+    const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+    const tags = (o.tags || []).join(','); // your tags are an array already
+    const shippedOrComplete = /\b(shipped|complete)\b/i.test(tags);
+    return ageDays > 7 && !shippedOrComplete;
+  }
   ngOnInit() {
     // Use ONE stream; remove the extra fetch().
     interval(60000).pipe(          // back off to 60s (tune as needed)
@@ -122,5 +133,13 @@ export class OrdersBoardComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+  get grandTotal(): number {
+    return (this.orders || []).reduce((sum, o: any) => sum + (o.total || 0), 0);
+  }
+  
+  // optional: pick a currency to display in the totals row
+  get totalsCurrency(): string | undefined {
+    return this.orders?.find(o => !!o.currency)?.currency;
   }
 }

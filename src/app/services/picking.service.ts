@@ -6,6 +6,8 @@ import { map, Observable } from 'rxjs';
 export interface PickingOrderTag {
   NAME: string;
   IS_EXPRESS?: boolean;
+  IS_OLD?: boolean;
+  DATE?: string; // ISO
 }
 
 export interface PickingRow {
@@ -15,7 +17,7 @@ export interface PickingRow {
   VARIANT_TITLE: string;
   IMAGE: string;
   TOTAL_QTY: number;
-  ORDERS: PickingOrderTag[]; // per-order tag with express flag
+  ORDERS: PickingOrderTag[];
 }
 
 @Injectable({ providedIn: 'root' })
