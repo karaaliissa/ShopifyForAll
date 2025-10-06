@@ -52,5 +52,8 @@ print() {
   const url = `${environment.API_BASE_URL}/api/picking?${params.toString()}`;
   window.open(url, '_blank', 'noopener');
 }
-
+printPage() {
+  // Give Angular a tick to finish any pending UI changes, then print
+  setTimeout(() => window.print(), 0);
+}
 }

@@ -22,11 +22,27 @@ button.primary { background:#111827; color:#fff; border:none; }
 button:disabled { opacity:.6; cursor:default; }
 
 /* Print */
-@media print {
+/* @media print {
   .no-print { display:none !important; }
   .only-print { display:block; }
   .picking-page { padding:0; }
   .grid { grid-template-columns: repeat(2, 1fr); gap: .4rem; }
   .card { page-break-inside: avoid; }
 }
-.only-print { display:none; }
+.only-print { display:none; } */
+/* src/app/picking/picking.component.css */
+
+/* Hide controls on paper, keep the grid */
+@media print {
+  .no-print { display: none !important; }
+  .only-print { display: block !important; }
+
+  /* avoid items splitting across pages */
+  .card { break-inside: avoid; }
+
+  /* optional: remove page padding if you added any wrapper padding */
+  body { margin: 0; }
+}
+
+/* default: only-print content stays hidden on screen */
+.only-print { display: none; }
