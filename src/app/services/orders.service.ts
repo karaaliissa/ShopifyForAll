@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { map, Observable, of, shareReplay } from 'rxjs';
+import { map, Observable, of, shareReplay, catchError, throwError} from 'rxjs';
 
 // ---- Domain types (Sheets-backed) ------------------------------------------
 
@@ -155,13 +155,14 @@ export class OrdersService {
     if (opts?.limit)  params = params.set('limit', String(opts.limit));
 
     return this.http
-      .get<OrdersApiResponse>(`${this.base}/api/orders`, { params })
-      .pipe(
-        map(res => (res?.ok ? res.items : [])),
-        map(rows => rows.map(adaptRow)),
-        map(rows => this.clientFilter(rows, opts))
-      );
-  }
+    .get<OrdersApiResponse>(`${this.base}/api/orders`, { params })
+    .pipe(
+      catchError(() => of({ ok: false, items: [] } as OrdersApiResponse)),
+      map(res => (res?.ok ? res.items : [])),
+      map(rows => rows.map(adaptRow)),
+      map(rows => this.clientFilter(rows, opts))
+    );
+}
 
   // Pull latest items for one order and cache them (kept generic/typed as any[] until you define an Item interface)
 
@@ -175,14 +176,13 @@ export class OrdersService {
     return this.http
       .get<{ ok: boolean; items: OrderItem[] }>(`${this.base}/api/items`, { params })
       .pipe(
+        catchError(() => of({ ok: false, items: [] })),   // guard
         map(r => (r?.ok ? r.items : [])),
-        map(list => {
-          this.itemsCache.set(key, list);
-          return list;
-        }),
+        map(list => { this.itemsCache.set(key, list); return list; }),
         shareReplay(1)
       );
   }
+  
 
   // Same client-side filters, but now over the *typed* Order model
   private clientFilter(rows: Order[], o?: GetOrdersOptions): Order[] {
