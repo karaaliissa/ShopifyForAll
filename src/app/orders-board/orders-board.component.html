@@ -83,7 +83,15 @@
               </div>
             </td>
             <td>
-              <div *ngFor="let p of o.items" class="product-line">
+              <!-- <div *ngFor="let p of o.items" class="product-line">
+                <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
+                <div class="product-text">
+                  <span class="product-name">{{ p.TITLE }}</span>
+                  <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
+                  <span class="muted">x{{ p.QUANTITY }}</span>
+                </div>
+              </div> -->
+              <div *ngFor="let p of (o.items || [])" class="product-line">
                 <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
                 <div class="product-text">
                   <span class="product-name">{{ p.TITLE }}</span>

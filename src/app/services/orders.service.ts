@@ -153,19 +153,16 @@ export class OrdersService {
     if (opts?.shop)   params = params.set('shop', opts.shop);
     if (opts?.status) params = params.set('status', String(opts.status));
     if (opts?.limit)  params = params.set('limit', String(opts.limit));
-
+  
     return this.http
-    .get<OrdersApiResponse>(`${this.base}/api/orders`, { params })
-    .pipe(
-      catchError(() => of({ ok: false, items: [] } as OrdersApiResponse)),
-      map(res => (res?.ok ? res.items : [])),
-      map(rows => rows.map(adaptRow)),
-      map(rows => this.clientFilter(rows, opts))
-    );
-}
-
-  // Pull latest items for one order and cache them (kept generic/typed as any[] until you define an Item interface)
-
+      .get<OrdersApiResponse>(`${this.base}/api/orders`, { params })
+      .pipe(
+        catchError(() => of({ ok: false, items: [] } as OrdersApiResponse)),
+        map(res => Array.isArray(res?.items) ? res.items : []),  // ⬅️ robust
+        map(rows => rows.map(adaptRow)),
+        map(rows => this.clientFilter(rows, opts))
+      );
+  }
   
   getOrderItems(shop: string, orderId: string | number): Observable<OrderItem[]> {
     const key = `${shop}|${orderId}`;
@@ -174,14 +171,15 @@ export class OrdersService {
     const params = new HttpParams().set('shop', shop).set('order_id', String(orderId));
   
     return this.http
-      .get<{ ok: boolean; items: OrderItem[] }>(`${this.base}/api/items`, { params })
+      .get<{ ok: boolean; items?: OrderItem[] }>(`${this.base}/api/items`, { params })
       .pipe(
-        catchError(() => of({ ok: false, items: [] })),   // guard
-        map(r => (r?.ok ? r.items : [])),
+        catchError(() => of({ ok: false, items: [] })),                 // guard
+        map(r => Array.isArray(r?.items) ? r.items : []),               // ⬅️ robust
         map(list => { this.itemsCache.set(key, list); return list; }),
         shareReplay(1)
       );
   }
+  
   
 
   // Same client-side filters, but now over the *typed* Order model

@@ -49,8 +49,7 @@ print() {
   params.set('shop', this.shop);
   if (this.q()?.trim()) params.set('q', this.q().trim());
 
-  // NEW endpoint:
-  const url = `${environment.API_BASE_URL}/api/print/picking?${params.toString()}`;
+  const url = `${environment.API_BASE_URL}/api/picking?${params.toString()}`;
   window.open(url, '_blank', 'noopener');
 }
 

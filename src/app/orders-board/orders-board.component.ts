@@ -59,8 +59,10 @@ export class OrdersBoardComponent implements OnInit {
       next: rows => {
         this.orders = rows;
         this.loading = false;
+        if (!rows.length) this.error = 'No rows from API (check CORS/env/tabs).';
         this.loadItemsForVisibleRows(rows);
       },
+      complete: () => this.loading = false,
       error: err => {
         this.loading = false;
         this.error = err?.message ?? 'Failed to load orders';
