@@ -56,4 +56,7 @@ printPage() {
   // Give Angular a tick to finish any pending UI changes, then print
   setTimeout(() => window.print(), 0);
 }
+hasExpress(r: PickingRow): boolean {
+  return Array.isArray(r.ORDERS) && r.ORDERS.some(o => !!o.IS_EXPRESS);
+}
 }
