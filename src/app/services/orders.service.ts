@@ -15,6 +15,7 @@ export interface OrderItem {
   UNIT_PRICE?: number;
   LINE_TOTAL?: number;
   CURRENCY?: string;
+  PROPERTIES_JSON?: string;
 }
 
 export interface SheetOrderRow {
@@ -43,6 +44,7 @@ export interface SheetOrderRow {
 
   // NEW:
   NOTE?: string;
+  NOTE_ATTRIBUTES?: string; 
   SOURCE_NAME?: string;
   DISCOUNT_CODES?: string;
 }
@@ -71,6 +73,7 @@ export interface Order {
 
   // NEW (for UI columns):
   note?: string;
+  noteAttributes?: { name: string; value: any }[];
   sourceName?: string;
   discountCodes?: string[];
 }
@@ -80,7 +83,10 @@ export interface GetOrdersOptions {
   from?: string; to?: string; limit?: number; search?: string;
   notTagged?: boolean; tag?: string; hideComplete?: boolean;
 }
-
+const parseJson = <T = any>(s?: string): T | undefined => {
+  if (!s) return undefined;
+  try { return JSON.parse(s) as T; } catch { return undefined; }
+};
 // helpers
 const toNumber = (v: unknown): number | undefined => {
   if (typeof v === 'number') return v;
@@ -127,6 +133,7 @@ const adaptRow = (x: SheetOrderRow): Order => ({
 
   // NEW:
   note: x.NOTE,
+  noteAttributes: parseJson<{name:string; value:any}[]>(x.NOTE_ATTRIBUTES) || [],
   sourceName: x.SOURCE_NAME,
   discountCodes: splitTags(x.DISCOUNT_CODES),
 });

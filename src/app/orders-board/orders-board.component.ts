@@ -157,4 +157,8 @@ export class OrdersBoardComponent implements OnInit {
   get totalsCurrency(): string | undefined {
     return this.orders?.find(o => !!o.currency)?.currency;
   }
+  parseProps(json?: string): { name: string; value: any }[] {
+    if (!json) return [];
+    try { return JSON.parse(json); } catch { return []; }
+  }
 }
