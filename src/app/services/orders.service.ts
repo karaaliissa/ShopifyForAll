@@ -199,12 +199,19 @@ export class OrdersService {
     r.sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0));
     return r;
   }
+
   addTagRemote(shop: string, orderId: string | number, tag: string) {
-    const url = `${this.base}/api/orders/tag`;
-    return this.http.post<{ok:boolean; tags:string[]; error?:string}>(url, {
+    const url = `${this.base}/api/orders/tag`; // <-- add the slash
+    return this.http.post<{ ok:boolean; tags:string[]; error?:string }>(url, {
       shop, orderId, action: 'add', tag
-    });
+    }).pipe(
+      catchError(err => {
+        console.error('addTagRemote failed', err); // network/CORS
+        return of({ ok:false, tags:[], error: err?.message || 'request failed' });
+      })
+    );
   }
+  
   removeTagRemote(shop: string, orderId: string | number, tag: string) {
     const url = `${this.base}/api/orders/tag`;
     return this.http.post<{ok:boolean; tags:string[]; error?:string}>(url, {
