@@ -1,11 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { map, Observable, of, shareReplay, catchError, throwError} from 'rxjs';
-
-// ---- Domain types (Sheets-backed) ------------------------------------------
+import { map, Observable, of, shareReplay, catchError } from 'rxjs';
 
 export type FulfillmentStatus = 'unfulfilled' | 'partial' | 'fulfilled' | 'restocked' | 'cancelled' | '' ;
 export type FinancialStatus   = 'paid' | 'pending' | 'authorized' | 'partially_paid' | 'refunded' | 'voided' | '' ;
+
 export interface OrderItem {
   TITLE: string;
   VARIANT_TITLE?: string;
@@ -13,15 +12,19 @@ export interface OrderItem {
   FULFILLABLE_QUANTITY?: number;
   SKU?: string;
   IMAGE?: string;
+  UNIT_PRICE?: number;
+  LINE_TOTAL?: number;
+  CURRENCY?: string;
 }
+
 export interface SheetOrderRow {
   SHOP_DOMAIN: string;
-  ORDER_ID: string;                 // comes as string from Sheets
+  ORDER_ID: string;
   ORDER_NAME?: string;
-  CREATED_AT?: string;              // ISO-like strings in the sheet
+  CREATED_AT?: string;
   UPDATED_AT?: string;
   CANCELLED_AT?: string;
-  FULFILLMENT_STATUS?: FulfillmentStatus | string;   // tolerate unknowns
+  FULFILLMENT_STATUS?: FulfillmentStatus | string;
   FINANCIAL_STATUS?: FinancialStatus | string;
   PAYMENT_GATEWAY?: string;
   SHIPPING_METHOD?: string;
@@ -33,18 +36,19 @@ export interface SheetOrderRow {
   SHIP_ZIP?: string;
   SHIP_COUNTRY?: string;
   SHIP_PHONE?: string;
-  TAGS?: string;                    // comma-separated
-  TOTAL?: string | number;          // Sheets often stores numbers as strings
+  TAGS?: string;
+  TOTAL?: string | number;
   CURRENCY?: string;
   CUSTOMER_EMAIL?: string;
+
+  // NEW:
+  NOTE?: string;
+  SOURCE_NAME?: string;
+  DISCOUNT_CODES?: string;
 }
 
-export interface OrdersApiResponse {
-  ok: boolean;
-  items: SheetOrderRow[];
-}
+export interface OrdersApiResponse { ok: boolean; items: SheetOrderRow[]; }
 
-// What your components actually consume (post-adapted/normalized)
 export interface Order {
   shopDomain: string;
   orderId: string;
@@ -57,36 +61,27 @@ export interface Order {
   paymentGateway?: string;
   shippingMethod?: string;
   shipTo?: {
-    name?: string;
-    address1?: string;
-    address2?: string;
-    city?: string;
-    province?: string;
-    zip?: string;
-    country?: string;
-    phone?: string;
+    name?: string; address1?: string; address2?: string; city?: string;
+    province?: string; zip?: string; country?: string; phone?: string;
   };
   tags: string[];
   total?: number;
   currency?: string;
   customerEmail?: string;
+
+  // NEW (for UI columns):
+  note?: string;
+  sourceName?: string;
+  discountCodes?: string[];
 }
 
 export interface GetOrdersOptions {
-  shop?: string;
-  status?: FulfillmentStatus | string;
-  financial?: FinancialStatus | string;
-  from?: string;       // ISO
-  to?: string;         // ISO
-  limit?: number;
-  search?: string;
-  notTagged?: boolean;
-  tag?: string;
-  hideComplete?: boolean;
+  shop?: string; status?: FulfillmentStatus | string; financial?: FinancialStatus | string;
+  from?: string; to?: string; limit?: number; search?: string;
+  notTagged?: boolean; tag?: string; hideComplete?: boolean;
 }
 
-// ---- Small adapters/guards -------------------------------------------------
-
+// helpers
 const toNumber = (v: unknown): number | undefined => {
   if (typeof v === 'number') return v;
   if (typeof v === 'string' && v.trim() !== '') {
@@ -95,20 +90,15 @@ const toNumber = (v: unknown): number | undefined => {
   }
   return undefined;
 };
-
 const toDate = (v?: string): Date | undefined => {
   if (!v) return undefined;
   const d = new Date(v);
   return isNaN(d.getTime()) ? undefined : d;
 };
-
 const splitTags = (tags?: string): string[] =>
-  (tags ?? '')
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean);
+  (tags ?? '').split(',').map(s => s.trim()).filter(Boolean);
 
-// Convert raw Sheets row into your app’s typed model
+// row -> model
 const adaptRow = (x: SheetOrderRow): Order => ({
   shopDomain: x.SHOP_DOMAIN,
   orderId: String(x.ORDER_ID),
@@ -134,18 +124,17 @@ const adaptRow = (x: SheetOrderRow): Order => ({
   total: toNumber(x.TOTAL),
   currency: x.CURRENCY,
   customerEmail: x.CUSTOMER_EMAIL,
-});
 
-// ---- Service (same shape, Sheets-friendly) ---------------------------------
+  // NEW:
+  note: x.NOTE,
+  sourceName: x.SOURCE_NAME,
+  discountCodes: splitTags(x.DISCOUNT_CODES),
+});
 
 @Injectable({ providedIn: 'root' })
 export class OrdersService {
-  // Your deployed sheets-backed API (unchanged)
   private base = 'https://shopify-sheets-backend.vercel.app';
-
-  // Cache typed items per shop|orderId
   private itemsCache = new Map<string, any[]>();
-
   constructor(private http: HttpClient) {}
 
   getOrders(opts?: GetOrdersOptions): Observable<Order[]> {
@@ -153,71 +142,44 @@ export class OrdersService {
     if (opts?.shop)   params = params.set('shop', opts.shop);
     if (opts?.status) params = params.set('status', String(opts.status));
     if (opts?.limit)  params = params.set('limit', String(opts.limit));
-  
-    return this.http
-      .get<OrdersApiResponse>(`${this.base}/api/orders`, { params })
-      .pipe(
-        catchError(() => of({ ok: false, items: [] } as OrdersApiResponse)),
-        map(res => Array.isArray(res?.items) ? res.items : []),  // ⬅️ robust
-        map(rows => rows.map(adaptRow)),
-        map(rows => this.clientFilter(rows, opts))
-      );
+
+    return this.http.get<OrdersApiResponse>(`${this.base}/api/orders`, { params }).pipe(
+      catchError(() => of({ ok: false, items: [] } as OrdersApiResponse)),
+      map(res => Array.isArray(res?.items) ? res.items : []),
+      map(rows => rows.map(adaptRow)),
+      map(rows => this.clientFilter(rows, opts))
+    );
   }
-  
+
   getOrderItems(shop: string, orderId: string | number): Observable<OrderItem[]> {
     const key = `${shop}|${orderId}`;
     if (this.itemsCache.has(key)) return of(this.itemsCache.get(key)!);
-  
     const params = new HttpParams().set('shop', shop).set('order_id', String(orderId));
-  
-    return this.http
-      .get<{ ok: boolean; items?: OrderItem[] }>(`${this.base}/api/items`, { params })
-      .pipe(
-        catchError(() => of({ ok: false, items: [] })),                 // guard
-        map(r => Array.isArray(r?.items) ? r.items : []),               // ⬅️ robust
-        map(list => { this.itemsCache.set(key, list); return list; }),
-        shareReplay(1)
-      );
-  }
-  
-  
 
-  // Same client-side filters, but now over the *typed* Order model
+    return this.http.get<{ ok: boolean; items?: OrderItem[] }>(`${this.base}/api/items`, { params }).pipe(
+      catchError(() => of({ ok: false, items: [] })),
+      map(r => Array.isArray(r?.items) ? r.items : []),
+      map(list => { this.itemsCache.set(key, list); return list; }),
+      shareReplay(1)
+    );
+  }
+
   private clientFilter(rows: Order[], o?: GetOrdersOptions): Order[] {
     let r = [...rows];
-
     if (o?.from || o?.to) {
       const from = o.from ? new Date(o.from).getTime() : -Infinity;
       const to   = o.to   ? new Date(o.to).getTime()   :  Infinity;
-      r = r.filter(x => {
-        const t = x.createdAt?.getTime() ?? x.updatedAt?.getTime() ?? 0;
-        return t >= from && t <= to;
-      });
+      r = r.filter(x => (x.createdAt?.getTime() ?? x.updatedAt?.getTime() ?? 0) >= from
+                      && (x.createdAt?.getTime() ?? x.updatedAt?.getTime() ?? 0) <= to);
     }
-
-    if (o?.financial) {
-      const f = String(o.financial).toLowerCase();
-      r = r.filter(x => (x.financialStatus ?? '').toLowerCase() === f);
-    }
-
-    if (o?.status) {
-      const s = String(o.status).toLowerCase();
-      r = r.filter(x => (x.fulfillmentStatus ?? '').toLowerCase() === s);
-    }
-
-    if (o?.hideComplete) {
-      r = r.filter(x => !x.cancelledAt);
-    }
-
-    if (o?.notTagged) {
-      r = r.filter(x => x.tags.length === 0);
-    }
-
+    if (o?.financial) r = r.filter(x => (x.financialStatus ?? '').toLowerCase() === String(o.financial).toLowerCase());
+    if (o?.status)    r = r.filter(x => (x.fulfillmentStatus ?? '').toLowerCase() === String(o.status).toLowerCase());
+    if (o?.hideComplete) r = r.filter(x => !x.cancelledAt);
+    if (o?.notTagged) r = r.filter(x => x.tags.length === 0);
     if (o?.tag) {
       const tg = o.tag.toLowerCase();
       r = r.filter(x => x.tags.map(t => t.toLowerCase()).includes(tg));
     }
-
     if (o?.search) {
       const q = o.search.toLowerCase();
       r = r.filter(x =>
@@ -227,13 +189,20 @@ export class OrdersService {
         x.orderId.toLowerCase().includes(q)
       );
     }
-
-    r.sort((a, b) => {
-      const ta = b.updatedAt?.getTime() ?? 0;
-      const tb = a.updatedAt?.getTime() ?? 0;
-      return ta - tb; // newest first
-    });
-
+    r.sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0));
     return r;
-    }
+  }
+  addTagRemote(shop: string, orderId: string | number, tag: string) {
+    const url = `${this.base}/api/orders/tag`;
+    return this.http.post<{ok:boolean; tags:string[]; error?:string}>(url, {
+      shop, orderId, action: 'add', tag
+    });
+  }
+  removeTagRemote(shop: string, orderId: string | number, tag: string) {
+    const url = `${this.base}/api/orders/tag`;
+    return this.http.post<{ok:boolean; tags:string[]; error?:string}>(url, {
+      shop, orderId, action: 'remove', tag
+    });
+  }
+  
 }

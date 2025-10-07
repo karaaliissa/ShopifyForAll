@@ -107,8 +107,23 @@ export class OrdersBoardComponent implements OnInit {
 
   onTagChange(o: Order, event: Event) {
     const value = (event.target as HTMLSelectElement).value;
-    if (value) this.addTag(o, value);
+    if (!value) return;
+  
+    // optimistic UI
+    const prev = [...(o.tags || [])];
+    if (!o.tags.includes(value)) o.tags = [...o.tags, value];
+  
+    this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
+      next: (res) => {
+        if (!res?.ok) o.tags = prev; // rollback on soft error
+        // else tags already in UI; backend also updated Sheets + busted cache
+      },
+      error: () => { o.tags = prev; } // rollback on network error
+    });
+  
+    (event.target as HTMLSelectElement).value = ''; // reset dropdown
   }
+  
 
   getTags(tags?: string[]): string[] {
     return (tags || []).map(t => t.trim()).filter(t => t.length > 0);

@@ -34,6 +34,7 @@
     <label>
       <input type="checkbox" /> Hide complete
     </label>
+
     <td colspan="6" class="num"><strong>Grand Total</strong></td>
     <td class="num">
       <ng-container *ngIf="totalsCurrency; else plainGrand">
@@ -44,10 +45,12 @@
       </ng-template>
     </td>
   </div>
-  <!-- add to orders component toolbar -->
+
+  <!-- quick shipday export controls -->
   <input [(ngModel)]="exportShop" placeholder="shop domain" />
   <input type="date" [(ngModel)]="exportDate" />
   <button (click)="exportShipday()">Export Shipday CSV</button>
+
   <!-- Toolbar -->
   <div class="toolbar">
     <div class="actions-left">
@@ -69,77 +72,40 @@
       <thead>
         <tr>
           <th>Order</th>
-          <th>Product</th>
-          <th>Total</th>
-          <!-- <th>Notes</th> -->
-          <th>Ship To</th>
-          <th>Method</th>
           <th>Tags</th>
+          <th>Products</th>
+          <th>Shipping Info</th>
+          <th>Method / Notes</th>
+          <th>Total</th>
+          <th>Code Used</th>
+          <th>Source</th>
         </tr>
       </thead>
 
       <tbody>
         <tr *ngFor="let o of orders">
+          <!-- Order -->
           <td>
             <div class="order-id">
-              <!-- <input type="checkbox" /> -->
-              <div>
-
-                <div class="link" [ngClass]="{ 'text-old': isOld(o) }">
-                  {{ o.orderName || o.orderId }}
-                </div>
-                <div class="">{{ o.shipTo?.name }}</div>
-                <div class="muted">Tel: {{ o.shipTo?.phone }}</div>
-                <div class="date">{{ o.createdAt | date:'medium' }}</div>
-
-                <div class="badges">
-                  <span class="badge open">{{ o.fulfillmentStatus || 'Open' }}</span>
-                  <span class="badge" [ngClass]="o.financialStatus?.toLowerCase()">{{ o.financialStatus }}</span>
-                </div>
+              <div class="link" [ngClass]="{ 'text-old': isOld(o) }">
+                {{ o.orderName || o.orderId }}
+              </div>
+              <div class="date">{{ o.createdAt | date:'medium' }}</div>
+              <div class="badges">
+                <span class="badge open">{{ o.fulfillmentStatus || 'Open' }}</span>
+                <span class="badge" [ngClass]="(o.financialStatus||'').toLowerCase()">
+                  {{ o.financialStatus }}
+                </span>
               </div>
             </div>
           </td>
 
-
-          <td>
-            <div *ngFor="let p of (o.items || [])" class="product-line">
-              <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
-              <div class="product-text">
-                <span class="product-name">{{ p.TITLE }}</span>
-                <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
-                <span class="muted">x{{ p.QUANTITY }}</span>
-              </div>
-            </div>
-          </td>
-          <td class="num">
-            <!-- use currency pipe if your currency codes are standard (USD, EUR, AED...) -->
-            <ng-container *ngIf="o.currency; else plainTotal">
-              {{ o.total || 0 | currency:o.currency:'symbol' }}
-            </ng-container>
-            <ng-template #plainTotal>
-              {{ o.total || 0 | number:'1.0-2' }} {{ o.currency || '' }}
-            </ng-template>
-          </td>
-
-          <!-- <td></td>
-            <td>–</td> -->
-          <td>
-            <!-- <div class="customer">{{ o.shipTo?.name }}</div> -->
-            <div class="muted">{{ o.shipTo?.address1 }} {{ o.shipTo?.city }}</div>
-
-          </td>
-          <td [ngClass]="{ 'text-express': isExpress(o), 'text-old': isOld(o) }">
-            {{ o.shippingMethod }}
-            <span *ngIf="isExpress(o)" class="ship ship-express">Express</span>
-            <span *ngIf="isOld(o)" class="ship ship-old">OLD ORDER</span>
-          </td>
+          <!-- Tags -->
           <td>
             <div class="badges">
               <span *ngFor="let t of getTags(o.tags)" class="tag" [ngClass]="t.toLowerCase()">
                 {{ t }}
               </span>
-
-
             </div>
             <select (change)="onTagChange(o, $event)">
               <option value="">Add tag</option>
@@ -149,14 +115,84 @@
               <option>Cancel</option>
             </select>
           </td>
+
+          <!-- Products (qty × unit = line total) -->
+          <td>
+            <div *ngFor="let p of (o.items || [])" class="product-line">
+              <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
+              <div class="product-text">
+                <span class="product-name">{{ p.TITLE }}</span>
+                <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
+                <span class="muted">x{{ p.QUANTITY }}</span>
+
+                <div class="muted">
+                  <ng-container *ngIf="o.currency; else plainPrices">
+                    {{ (p.UNIT_PRICE ?? 0) | currency:o.currency:'symbol' }}
+                    × {{ p.QUANTITY }}
+                    =
+                    {{ (p.LINE_TOTAL ?? (p.UNIT_PRICE ?? 0) * p.QUANTITY) | currency:o.currency:'symbol' }}
+                  </ng-container>
+                  <ng-template #plainPrices>
+                    {{ (p.UNIT_PRICE ?? 0) | number:'1.2-2' }} × {{ p.QUANTITY }} =
+                    {{ (p.LINE_TOTAL ?? (p.UNIT_PRICE ?? 0) * p.QUANTITY) | number:'1.2-2' }}
+                    {{ p.CURRENCY || o.currency || '' }}
+                  </ng-template>
+                </div>
+              </div>
+            </div>
+          </td>
+
+          <!-- Shipping Info -->
+          <td>
+            <div class="customer">{{ o.shipTo?.name }}</div>
+            <div class="muted">{{ o.shipTo?.phone }}</div>
+            <div class="muted">
+              {{ o.shipTo?.address1 }}
+              <span *ngIf="o.shipTo?.address2">, {{ o.shipTo?.address2 }}</span>
+            </div>
+            <div class="muted">
+              {{ o.shipTo?.city }} {{ o.shipTo?.zip }}
+            </div>
+            <div class="muted">
+              {{ o.shipTo?.province }} {{ o.shipTo?.country }}
+            </div>
+          </td>
+
+          <!-- Method / Notes -->
+          <td [ngClass]="{ 'text-express': isExpress(o), 'text-old': isOld(o) }">
+            {{ o.shippingMethod || '—' }}
+            <span *ngIf="isExpress(o)" class="ship ship-express">Express</span>
+            <span *ngIf="isOld(o)" class="ship ship-old">OLD ORDER</span>
+            <div class="muted" style="margin-top:6px;">
+              Notes: {{ o.note || '—' }}
+            </div>
+          </td>
+
+          <!-- Total (order-level) -->
+          <td class="num">
+            <ng-container *ngIf="o.currency; else plainTotal">
+              {{ (o.total || 0) | currency:o.currency:'symbol' }}
+            </ng-container>
+            <ng-template #plainTotal>
+              {{ o.total || 0 | number:'1.0-2' }} {{ o.currency || '' }}
+            </ng-template>
+          </td>
+          
+          <!-- Code Used -->
+          <td class="muted">
+            <ng-container *ngIf="o.discountCodes && o.discountCodes.length > 0; else dash">
+              <!-- {{ o.discountCodes!.join(', ') }} -->
+              {{ o.discountCodes.join(', ') }}
+            </ng-container>
+            <ng-template #dash>—</ng-template>
+          </td>
+          
+
+          <!-- Source -->
+          <td class="muted">{{ o.sourceName || '—' }}</td>
+
         </tr>
       </tbody>
-      <!-- <tfoot>
-          <tr>
-           
-          </tr>
-        </tfoot> -->
-
     </table>
   </div>
 
