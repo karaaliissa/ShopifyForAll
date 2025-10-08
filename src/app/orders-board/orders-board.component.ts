@@ -105,23 +105,48 @@ export class OrdersBoardComponent implements OnInit {
     }
   }
 
+  // onTagChange(o: Order, event: Event) {
+  //   const value = (event.target as HTMLSelectElement).value;
+  //   if (!value) return;
+  
+  //   // optimistic UI
+  //   const prev = [...(o.tags || [])];
+  //   if (!o.tags.includes(value)) o.tags = [...o.tags, value];
+  
+  //   this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
+  //     next: (res) => {
+  //       if (!res?.ok) o.tags = prev; // rollback on soft error
+  //       // else tags already in UI; backend also updated Sheets + busted cache
+  //     },
+  //     error: () => { o.tags = prev; } // rollback on network error
+  //   });
+  
+  //   (event.target as HTMLSelectElement).value = ''; // reset dropdown
+  // }
   onTagChange(o: Order, event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     if (!value) return;
   
-    // optimistic UI
     const prev = [...(o.tags || [])];
     if (!o.tags.includes(value)) o.tags = [...o.tags, value];
   
     this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
       next: (res) => {
-        if (!res?.ok) o.tags = prev; // rollback on soft error
-        // else tags already in UI; backend also updated Sheets + busted cache
+        if (!res?.ok) {
+          o.tags = prev; // rollback
+          return;
+        }
+        // Hard refresh (bypass CDN & memory cache) so Sheets changes appear immediately
+        this.ordersSvc.getOrders({ limit: 50, refresh: true }).subscribe(rows => {
+          this.orders = rows;
+        });
       },
-      error: () => { o.tags = prev; } // rollback on network error
+      error: () => {
+        o.tags = prev; // rollback
+      }
     });
   
-    (event.target as HTMLSelectElement).value = ''; // reset dropdown
+    (event.target as HTMLSelectElement).value = '';
   }
   
 

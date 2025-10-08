@@ -82,7 +82,9 @@ export interface GetOrdersOptions {
   shop?: string; status?: FulfillmentStatus | string; financial?: FinancialStatus | string;
   from?: string; to?: string; limit?: number; search?: string;
   notTagged?: boolean; tag?: string; hideComplete?: boolean;
+  
 }
+
 const parseJson = <T = any>(s?: string): T | undefined => {
   if (!s) return undefined;
   try { return JSON.parse(s) as T; } catch { return undefined; }
@@ -137,19 +139,48 @@ const adaptRow = (x: SheetOrderRow): Order => ({
   sourceName: x.SOURCE_NAME,
   discountCodes: splitTags(x.DISCOUNT_CODES),
 });
-
+export interface GetOrdersOptions {
+  shop?: string;
+  status?: FulfillmentStatus | string;
+  financial?: FinancialStatus | string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  search?: string;
+  notTagged?: boolean;
+  tag?: string;
+  hideComplete?: boolean;
+  refresh?: boolean; // <-- added
+}
 @Injectable({ providedIn: 'root' })
 export class OrdersService {
   private base = 'https://shopify-sheets-backend.vercel.app';
   private itemsCache = new Map<string, any[]>();
   constructor(private http: HttpClient) {}
 
+  // getOrders(opts?: GetOrdersOptions): Observable<Order[]> {
+  //   let params = new HttpParams();
+  //   if (opts?.shop)   params = params.set('shop', opts.shop);
+  //   if (opts?.status) params = params.set('status', String(opts.status));
+  //   if (opts?.limit)  params = params.set('limit', String(opts.limit));
+
+  //   return this.http.get<OrdersApiResponse>(`${this.base}/api/orders`, { params }).pipe(
+  //     catchError(() => of({ ok: false, items: [] } as OrdersApiResponse)),
+  //     map(res => Array.isArray(res?.items) ? res.items : []),
+  //     map(rows => rows.map(adaptRow)),
+  //     map(rows => this.clientFilter(rows, opts))
+  //   );
+  // }
   getOrders(opts?: GetOrdersOptions): Observable<Order[]> {
     let params = new HttpParams();
     if (opts?.shop)   params = params.set('shop', opts.shop);
     if (opts?.status) params = params.set('status', String(opts.status));
     if (opts?.limit)  params = params.set('limit', String(opts.limit));
-
+    if (opts?.refresh) {
+      params = params.set('refresh', '1')
+                     .set('ts', String(Date.now())); // CDN key-buster
+    }
+  
     return this.http.get<OrdersApiResponse>(`${this.base}/api/orders`, { params }).pipe(
       catchError(() => of({ ok: false, items: [] } as OrdersApiResponse)),
       map(res => Array.isArray(res?.items) ? res.items : []),
@@ -157,7 +188,6 @@ export class OrdersService {
       map(rows => this.clientFilter(rows, opts))
     );
   }
-
   getOrderItems(shop: string, orderId: string | number): Observable<OrderItem[]> {
     const key = `${shop}|${orderId}`;
     if (this.itemsCache.has(key)) return of(this.itemsCache.get(key)!);
