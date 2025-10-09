@@ -36,16 +36,41 @@ export class OrdersBoardComponent implements OnInit {
     return ['Processing','Cancel'];             // start state
   }
   
+  // onNextAction(o: Order, e: Event) {
+  //   const value = (e.target as HTMLSelectElement).value;
+  //   if (!value) return;
+  
+  //   // Prevent regress after Complete
+  //   if (this.has(o, 'complete') && value.toLowerCase() !== 'complete') {
+  //     (e.target as HTMLSelectElement).value = '';
+  //     alert('Order is complete. You cannot move it back.');
+  //     return;
+  //   }
+  // }
   onNextAction(o: Order, e: Event) {
-    const value = (e.target as HTMLSelectElement).value;
+    const sel = e.target as HTMLSelectElement;
+    const value = sel.value;
     if (!value) return;
   
-    // Prevent regress after Complete
+    // guard: don't allow regress after Complete
     if (this.has(o, 'complete') && value.toLowerCase() !== 'complete') {
-      (e.target as HTMLSelectElement).value = '';
+      sel.value = '';
       alert('Order is complete. You cannot move it back.');
       return;
     }
+  
+    // optimistic add (keep history)
+    const prev = [...o.tags];
+    const already = o.tags.map(t => t.toLowerCase()).includes(value.toLowerCase());
+    if (!already) o.tags = [...o.tags, value];
+  
+    this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
+      next: r => { if (!r?.ok) o.tags = prev; },  // rollback on soft error
+      error: () => { o.tags = prev; }             // rollback on network error
+    });
+  
+    // reset dropdown to "Add tag"
+    sel.selectedIndex = 0;
   }
   // 🚫 No auto-load. Leave empty if you truly want manual fetch only.
   ngOnInit() {}

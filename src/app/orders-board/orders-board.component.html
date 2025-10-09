@@ -125,10 +125,15 @@
               </span>
             </div>
           
+            <!-- <select (change)="onNextAction(o, $event)">
+              <option value="">Add tag</option>
+              <option *ngFor="let opt of nextActions(o)" [value]="opt">{{ opt }}</option>
+            </select> -->
             <select (change)="onNextAction(o, $event)">
               <option value="">Add tag</option>
               <option *ngFor="let opt of nextActions(o)" [value]="opt">{{ opt }}</option>
             </select>
+            
           </td>
 
           <!-- Products (qty × unit = line total) -->
