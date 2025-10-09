@@ -1,6 +1,8 @@
 {
-    "rewrites": [
-      { "source": "/(.*)", "destination": "/index.html" }
-    ]
-  }
+  "rewrites": [
+    { "source": "/api/orders/tag", "destination": "/api/orders/tag" }, 
+    { "source": "/api/(.*)", "destination": "/api/[...route]" } 
+  ]
+}
+
   

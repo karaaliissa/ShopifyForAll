@@ -230,18 +230,35 @@ export class OrdersService {
     return r;
   }
 
-  addTagRemote(shop: string, orderId: string | number, tag: string) {
-    const url = `${this.base}/api/orders/tag`; // <-- add the slash
-    return this.http.post<{ ok:boolean; tags:string[]; error?:string }>(url, {
-      shop, orderId, action: 'add', tag
-    }).pipe(
-      catchError(err => {
-        console.error('addTagRemote failed', err); // network/CORS
-        return of({ ok:false, tags:[], error: err?.message || 'request failed' });
-      })
-    );
-  }
-  
+  // addTagRemote(shop: string, orderId: string | number, tag: string) {
+  //   const url = `${this.base}/api/orders/tag`; // <-- add the slash
+  //   return this.http.post<{ ok:boolean; tags:string[]; error?:string }>(url, {
+  //     shop, orderId, action: 'add', tag
+  //   }).pipe(
+  //     catchError(err => {
+  //       console.error('addTagRemote failed', err); // network/CORS
+  //       return of({ ok:false, tags:[], error: err?.message || 'request failed' });
+  //     })
+  //   );
+  // }
+  // services/orders.service.ts
+addTagRemote(shop: string, orderId: string | number, tag: string) {
+  const url = `${this.base}/api/orders/tag`;
+  const body = new URLSearchParams({
+    shop,
+    orderId: String(orderId),
+    action: 'add',
+    tag
+  }).toString();
+
+  // form post => no preflight
+  return this.http.post<{ ok:boolean; tags:string[]; error?:string }>(
+    url,
+    body,
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  );
+}
+
   removeTagRemote(shop: string, orderId: string | number, tag: string) {
     const url = `${this.base}/api/orders/tag`;
     return this.http.post<{ok:boolean; tags:string[]; error?:string}>(url, {
