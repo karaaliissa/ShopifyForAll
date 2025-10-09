@@ -243,7 +243,7 @@ export class OrdersService {
   // }
   // services/orders.service.ts
 addTagRemote(shop: string, orderId: string | number, tag: string) {
-  const url = `${this.base}/api/orders/tag`;
+  const url = `${this.base}/api/orders/tags`;
   const body = new URLSearchParams({
     shop,
     orderId: String(orderId),
@@ -260,7 +260,7 @@ addTagRemote(shop: string, orderId: string | number, tag: string) {
 }
 
   removeTagRemote(shop: string, orderId: string | number, tag: string) {
-    const url = `${this.base}/api/orders/tag`;
+    const url = `${this.base}/api/orders/tags`;
     return this.http.post<{ok:boolean; tags:string[]; error?:string}>(url, {
       shop, orderId, action: 'remove', tag
     });

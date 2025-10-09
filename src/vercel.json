@@ -1,8 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/orders/tag", "destination": "/api/orders/tag" }, 
-    { "source": "/api/(.*)", "destination": "/api/[...route]" } 
+    { "source": "/api/orders/tags", "destination": "/api/orders/tags" },
+    { "source": "/api/(.*)", "destination": "/api/[...route]" }
   ]
 }
-
-  
