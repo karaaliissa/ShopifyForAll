@@ -102,7 +102,7 @@
           </td>
 
           <!-- Tags -->
-          <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+          <!-- <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
             <div class="badges">
               <span *ngFor="let t of getTags(o.tags)" class="tag" [ngClass]="t.toLowerCase()">
                 {{ t }}
@@ -114,6 +114,20 @@
               <option>Processing</option>
               <option>Shipped</option>
               <option>Cancel</option>
+            </select>
+          </td> -->
+          <td>
+            <div class="badges">
+              <span *ngFor="let t of o.tags"
+                    class="tag" [ngClass]="t.toLowerCase()">
+                {{ t }}
+                <button class="tag-x" (click)="removeTag(o, t)" title="Remove">×</button>
+              </span>
+            </div>
+          
+            <select (change)="onNextAction(o, $event)">
+              <option value="">Add tag</option>
+              <option *ngFor="let opt of nextActions(o)" [value]="opt">{{ opt }}</option>
             </select>
           </td>
 
