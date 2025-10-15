@@ -94,6 +94,9 @@
 @media print {
   .modal-backdrop, .modal-header, .modal-actions { display: none !important; }
   .modal { box-shadow: none; border: 0; }
+  .size-ring {
+    border-color: #333;    /* simple black ring for reliability */
+  }
 }
 /* Hidden by default (screen) */
 .print-only { display: none; }
@@ -127,6 +130,7 @@
   font-size: 72px;        /* was 110px → scale down */
   line-height: 1;
   margin: 0 auto;
+  opacity: 0.3;  /* faint watermark look */
 }
 
 
@@ -159,4 +163,28 @@
 .col h3 { margin: 0 0 6px; }
 @media print, (max-width: 700px) {
   .cols { grid-template-columns: 1fr; }
+}
+.size-circle {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 6px;
+  background-color: var(--size-color, #999);
+  vertical-align: middle;
+}
+/* ---- Size ring (print only) ---- */
+.size-ring{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:14px;                 /* small circle */
+  height:14px;
+  border:2px solid #333;      /* ring in print */
+  border-radius:50%;
+  line-height:1;
+  font-size:inherit;          /* DO NOT change size text */
+  font-weight:inherit;
+  vertical-align:baseline;
+  margin:0 2px;               /* tiny breathing room */
 }

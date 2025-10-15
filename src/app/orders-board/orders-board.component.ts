@@ -53,6 +53,11 @@ export class OrdersBoardComponent implements OnInit {
     this.selectedOrder = order;
     this.showPrint = true;
   }
+  onModalClosed() {
+    // hide + fully reset so reopening the same order works
+    this.showPrint = false;
+    setTimeout(() => { this.selectedOrder = null; }, 0);
+  }
   onNextAction(o: Order, e: Event) {
     const sel = e.target as HTMLSelectElement;
     const value = sel.value;

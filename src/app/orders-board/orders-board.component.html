@@ -243,5 +243,12 @@
   <div *ngIf="!loading && !orders?.length" class="empty">
     No orders yet.
   </div>
-  <app-print-modal [order]="selectedOrder" [show]="showPrint"></app-print-modal>
+  <!-- mount only when needed + listen for close -->
+<app-print-modal
+*ngIf="showPrint"
+[order]="selectedOrder"
+[show]="showPrint"
+(closed)="onModalClosed()">
+</app-print-modal>
+
 </div>

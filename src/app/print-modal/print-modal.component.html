@@ -90,7 +90,7 @@
             src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
             alt="Crop & Top">
           <div class="order-info">
-            <p>Order #{{ order?.orderName }}</p>
+            <p>Order {{ order?.orderName }}</p>
             <p>{{ order?.shipTo?.city }}</p>
           </div>
         </div>
@@ -98,18 +98,18 @@
         <hr>
 
         <!-- PRINT-ONLY OVERLAY (nothing shows on screen) -->
-        <div class="zone-badge print-only" [class.express]="isExpress"
+        <!-- PRINT-ONLY OVERLAY (nothing shows on screen) -->
+        <div *ngIf="isExpress || zone" class="zone-badge print-only" [class.express]="isExpress"
           [ngStyle]="!isExpress ? {'--badge-color': zoneColor} : null">
 
-          <!-- Circle with N/A when NOT express -->
           <div *ngIf="!isExpress" class="circle">{{ zone }}</div>
 
-          <!-- EXPRESS banner -->
           <div *ngIf="isExpress" class="express-text">
             EXPRESS
             <div class="ar">مستعجل</div>
           </div>
-        </div>
+        </div> <!-- ✅ CLOSE THE OVERLAY WRAPPER -->
+
 
         <h3>Packing Slip</h3>
         <table class="items-table">
@@ -125,7 +125,11 @@
                 <img *ngIf="i.IMAGE" [src]="i.IMAGE" class="thumb" alt="">
                 <div>
                   {{ i.TITLE }}
-                  <div *ngIf="i.VARIANT_TITLE" class="muted">{{ i.VARIANT_TITLE }}</div>
+                  <div *ngIf="i.VARIANT_TITLE"
+     class="muted"
+     [innerHTML]="variantWithSizeRing(i.VARIANT_TITLE)">
+</div>
+
                 </div>
               </td>
               <td>{{ i.QUANTITY }}</td>
@@ -137,7 +141,7 @@
         [show]="showPrint"
         (closed)="onModalClosed()">
       </app-print-modal> -->
-      
+
       </div>
 
 
