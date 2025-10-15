@@ -87,10 +87,13 @@
       <div class="header-line">
         <img class="logo" src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
           alt="Crop & Top">
+      
         <div class="order-info">
+          <p>Order #{{ order?.orderName || order?.ORDER_NAME }}</p>
           <p>{{ order?.shipTo?.city }}</p>
         </div>
       </div>
+      
 
       <hr>
       <h3>Packing Slip</h3>
