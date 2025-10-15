@@ -259,11 +259,21 @@ addTagRemote(shop: string, orderId: string | number, tag: string) {
   );
 }
 
-  removeTagRemote(shop: string, orderId: string | number, tag: string) {
-    const url = `${this.base}/api/orders/tags`;
-    return this.http.post<{ok:boolean; tags:string[]; error?:string}>(url, {
-      shop, orderId, action: 'remove', tag
-    });
-  }
+removeTagRemote(shop: string, orderId: string | number, tag: string) {
+  const url = `${this.base}/api/orders/tags`;
+  const body = new URLSearchParams({
+    shop,
+    orderId: String(orderId),
+    action: 'remove',
+    tag
+  }).toString();
+
+  return this.http.post<{ ok:boolean; tags:string[]; error?:string }>(
+    url,
+    body,
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  );
+}
+
   
 }

@@ -1,0 +1,120 @@
+<div class="modal-backdrop" *ngIf="show" (click)="close()"></div>
+
+<div class="modal" *ngIf="show">
+  <div class="modal-header">
+    <h2>Order #{{ order?.orderName || order?.ORDER_NAME }}</h2>
+    <button (click)="close()">✖</button>
+  </div>
+
+  <div class="modal-actions">
+    <button (click)="switch('invoice')" [class.active]="mode==='invoice'">🧾 Invoice</button>
+    <button (click)="switch('packing')" [class.active]="mode==='packing'">📦 Packing Slip</button>
+    <button class="primary" (click)="print()">🖨 Print</button>
+  </div>
+  <div #printArea>
+  <div class="print-content" [ngSwitch]="mode">
+    <!-- ================= INVOICE ================= -->
+    <div *ngSwitchCase="'invoice'" class="invoice-wrapper">
+      <div class="header-line">
+        <img class="logo" src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
+          alt="Crop & Top">
+        <div class="order-info">
+          <p>Order #{{ order?.orderName }}</p>
+          <p>{{ order?.createdAt | date:'MMM d, y' }}</p>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="cols">
+        <!-- LEFT: Shipping -->
+        <div class="col">
+          <h3>Shipping Address</h3>
+          <p>
+            {{ order?.shipTo?.name }}<br>
+            {{ order?.shipTo?.address1 }}<span *ngIf="order?.shipTo?.address2">, {{ order?.shipTo?.address2
+              }}</span><br>
+            {{ order?.shipTo?.city }}, {{ order?.shipTo?.province }} {{ order?.shipTo?.zip }}<br>
+            {{ order?.shipTo?.country }}<br>
+            <b>Tel:</b> {{ order?.shipTo?.phone }}
+          </p>
+        </div>
+
+        <!-- RIGHT: Order details -->
+        <div class="col">
+          <h3>Order Details</h3>
+          <p><b>Shipping Method:</b> {{ order?.shippingMethod || '—' }}</p>
+          <p><b>Payment Gateway:</b> {{ paymentGatewayDisplay() }}</p>
+          <p><b>COD:</b> {{ codText() }}</p>
+        </div>
+      </div>
+
+
+      <h3>Items</h3>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th class="right">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let i of order?.items">
+            <td class="prod">
+              <img *ngIf="i.IMAGE" [src]="i.IMAGE" class="thumb" alt="">
+              <div>
+                {{ i.TITLE }}
+                <div *ngIf="i.VARIANT_TITLE" class="muted">{{ i.VARIANT_TITLE }}</div>
+              </div>
+            </td>
+            <td>{{ i.QUANTITY }}</td>
+            <td class="right">{{ (i.UNIT_PRICE ?? i.PRICE) | currency:order?.currency }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="total-line">
+        <span>Total:</span>
+        <strong>{{ order?.total | currency:order?.currency }}</strong>
+      </div>
+
+      <p class="footer-note">♥ Thank you for shopping with Crop & Top ♥</p>
+    </div>
+
+    <!-- ================= PACKING SLIP ================= -->
+    <div *ngSwitchCase="'packing'" class="packing-wrapper">
+      <div class="header-line">
+        <img class="logo" src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
+          alt="Crop & Top">
+        <div class="order-info">
+          <p>{{ order?.shipTo?.city }}</p>
+        </div>
+      </div>
+
+      <hr>
+      <h3>Packing Slip</h3>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let i of order?.items">
+            <td class="prod">
+              <img *ngIf="i.IMAGE" [src]="i.IMAGE" class="thumb" alt="">
+              <div>
+                {{ i.TITLE }}
+                <div *ngIf="i.VARIANT_TITLE" class="muted">{{ i.VARIANT_TITLE }}</div>
+              </div>
+            </td>
+            <td>{{ i.QUANTITY }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>

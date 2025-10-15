@@ -87,9 +87,13 @@
           <!-- Order -->
           <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
             <div class="order-id">
-              <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+              <!-- <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+                {{ o.orderName || o.orderId }}
+              </div> -->
+              <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }" (click)="openPrintModal(o)">
                 {{ o.orderName || o.orderId }}
               </div>
+
               <div class="customer">{{ o.shipTo?.name }}</div>
               <div class="date">{{ o.createdAt | date:'medium' }}</div>
               <div class="badges">
@@ -118,13 +122,12 @@
           </td> -->
           <td>
             <div class="badges">
-              <span *ngFor="let t of o.tags"
-                    class="tag" [ngClass]="t.toLowerCase()">
+              <span *ngFor="let t of o.tags" class="tag" [ngClass]="t.toLowerCase()">
                 {{ t }}
                 <button class="tag-x" (click)="removeTag(o, t)" title="Remove">×</button>
               </span>
             </div>
-          
+
             <!-- <select (change)="onNextAction(o, $event)">
               <option value="">Add tag</option>
               <option *ngFor="let opt of nextActions(o)" [value]="opt">{{ opt }}</option>
@@ -133,11 +136,11 @@
               <option value="">Add tag</option>
               <option *ngFor="let opt of nextActions(o)" [value]="opt">{{ opt }}</option>
             </select>
-            
+
           </td>
 
           <!-- Products (qty × unit = line total) -->
-          <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+          <td>
             <div *ngFor="let p of (o.items || [])" class="product-line">
               <!-- <img *ngIf="p.IMAGE" [src]="p.IMAGE" alt="" class="thumb" loading="lazy" /> -->
               <ng-container *ngIf="p.IMAGE; else noImg">
@@ -146,12 +149,12 @@
               <ng-template #noImg>
                 <div class="thumb thumb--blank"></div>
               </ng-template>
-              
+
               <div class="product-text">
                 <span class="product-name">{{ p.TITLE }}</span>
                 <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
                 <span class="muted">x{{ p.QUANTITY }}</span>
-          
+
                 <div class="muted">
                   <ng-container *ngIf="o.currency; else plainPrices">
                     {{ (p.UNIT_PRICE ?? 0) | currency:o.currency:'symbol' }} × {{ p.QUANTITY }} =
@@ -163,7 +166,7 @@
                     {{ p.CURRENCY || o.currency || '' }}
                   </ng-template>
                 </div>
-          
+
                 <!-- LINE-ITEM PROPERTIES (optional) -->
                 <div class="muted" *ngFor="let prop of parseProps(p.PROPERTIES_JSON)">
                   • {{ prop.name }}: {{ prop.value }}
@@ -171,11 +174,11 @@
               </div>
             </div>
           </td>
-          
+
 
           <!-- Shipping Info -->
           <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
-            
+
             <div class="muted">{{ o.shipTo?.phone }}</div>
             <div class="muted">
               {{ o.shipTo?.address1 }}
@@ -191,23 +194,23 @@
 
           <!-- Method / Notes -->
           <td [ngClass]="{ 'text-express': isExpress(o), 'text-old': isOld(o) }"
-    [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
-  {{ o.shippingMethod || '—' }}
-  <!-- <span *ngIf="isExpress(o)" class="ship ship-express">Express</span> -->
-  <span *ngIf="isOld(o)" class="ship ship-old">OLD ORDER</span>
+            [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+            {{ o.shippingMethod || '—' }}
+            <!-- <span *ngIf="isExpress(o)" class="ship ship-express">Express</span> -->
+            <span *ngIf="isOld(o)" class="ship ship-old">OLD ORDER</span>
 
-  <!-- ORDER NOTE (plain text) -->
-  <div class="muted prewrap" *ngIf="o.note" style="margin-top:6px;">
-    {{ o.note }}
-  </div>
+            <!-- ORDER NOTE (plain text) -->
+            <div class="muted prewrap" *ngIf="o.note" style="margin-top:6px;">
+              {{ o.note }}
+            </div>
 
-  <!-- NOTE ATTRIBUTES -->
-  <ul class="muted" *ngIf="o.noteAttributes?.length" style="margin:6px 0 0 0; padding-left:18px;">
-    <li *ngFor="let a of o.noteAttributes">
-      {{ a.name }}: {{ a.value }}
-    </li>
-  </ul>
-</td>
+            <!-- NOTE ATTRIBUTES -->
+            <ul class="muted" *ngIf="o.noteAttributes?.length" style="margin:6px 0 0 0; padding-left:18px;">
+              <li *ngFor="let a of o.noteAttributes">
+                {{ a.name }}: {{ a.value }}
+              </li>
+            </ul>
+          </td>
 
 
           <!-- Total (order-level) -->
@@ -219,7 +222,7 @@
               {{ o.total || 0 | number:'1.0-2' }} {{ o.currency || '' }}
             </ng-template>
           </td>
-          
+
           <!-- Code Used -->
           <td class="muted">
             <ng-container *ngIf="o.discountCodes && o.discountCodes.length > 0; else dash">
@@ -227,7 +230,7 @@
             </ng-container>
             <ng-template #dash>—</ng-template>
           </td>
-          
+
 
           <!-- Source -->
           <td class="muted">{{ o.sourceName || '—' }}</td>
@@ -240,4 +243,5 @@
   <div *ngIf="!loading && !orders?.length" class="empty">
     No orders yet.
   </div>
+  <app-print-modal [order]="selectedOrder" [show]="showPrint"></app-print-modal>
 </div>

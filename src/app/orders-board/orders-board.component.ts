@@ -4,11 +4,12 @@ import { Order, OrdersService } from '../services/orders.service';
 import { map, catchError, of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ExportService } from '../services/export.service';
+import { PrintModalComponent } from '../print-modal/print-modal.component';
 
 @Component({
   selector: 'app-orders-board',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule,PrintModalComponent],
   providers: [DatePipe],
   templateUrl: './orders-board.component.html',
   styleUrls: ['./orders-board.component.css']
@@ -17,7 +18,8 @@ export class OrdersBoardComponent implements OnInit {
   orders: (Order & { items?: any[] })[] = [];
   loading = false;
   error = '';
-
+  selectedOrder: any = null;
+  showPrint = false;
   // shipday export controls (unchanged)
   exportShop = 'cropndtop.myshopify.com';
   exportDate = new Date().toISOString().slice(0, 10);
@@ -47,6 +49,10 @@ export class OrdersBoardComponent implements OnInit {
   //     return;
   //   }
   // }
+  openPrintModal(order: any) {
+    this.selectedOrder = order;
+    this.showPrint = true;
+  }
   onNextAction(o: Order, e: Event) {
     const sel = e.target as HTMLSelectElement;
     const value = sel.value;
