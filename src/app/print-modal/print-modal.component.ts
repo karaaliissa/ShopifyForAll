@@ -1,6 +1,6 @@
 import { Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer,SafeHtml  } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-print-modal',
@@ -14,8 +14,80 @@ export class PrintModalComponent {
   @Input() show = false;
   @Output() closed = new EventEmitter<void>();
   mode: 'invoice' | 'packing' = 'invoice';
-  constructor(private sanitizer: DomSanitizer) {}
+  constructor(private sanitizer: DomSanitizer) { }
   @ViewChild('printArea') printArea!: ElementRef<HTMLDivElement>;
+  private applyPrintColorArabic(html: string): string {
+    // Map: normalized key -> {ar, hex}
+    const colors: Record<string, { ar: string; hex: string }> = {
+      'black - crystal': { ar: 'أسود - كريستال', hex: '#000000' },
+      'black - black': { ar: 'أسود - أسود', hex: '#000000' },
+
+      'slate blue grey': { ar: 'أزرق رمادي أردوازي', hex: '#708090' },
+      'electric blue': { ar: 'أزرق كهربائي', hex: '#007FFF' },
+      'dusty blue': { ar: 'أزرق باهت', hex: '#7AA5C3' },
+      'baby blue': { ar: 'أزرق فاتح', hex: '#A3C7F3' },
+      'light blue wash': { ar: 'أزرق فاتح مغسول', hex: '#9EC1E6' },
+      'mid blue wash': { ar: 'أزرق متوسط مغسول', hex: '#5F8FBF' },
+      'navy blue': { ar: 'كحلي', hex: '#0A3D62' },
+      'royal blue': { ar: 'أزرق ملكي', hex: '#4169E1' },
+
+      'hot pink': { ar: 'وردي فاقع', hex: '#FF69B4' },
+      'baby pink': { ar: 'وردي فاتح', hex: '#F8BBD0' },
+      'pastel pink': { ar: 'وردي باستيل', hex: '#FFD1DC' },
+      'pink': { ar: 'وردي', hex: '#FFC0CB' },
+
+      'cherry red': { ar: 'أحمر كرزي', hex: '#D2042D' },
+      'red': { ar: 'أحمر', hex: '#FF0000' },
+      'burgundy': { ar: 'خمري', hex: '#800020' },
+      'brick': { ar: 'طوبي', hex: '#B55239' },
+
+      'dark green': { ar: 'أخضر داكن', hex: '#006400' },
+      'sage green': { ar: 'أخضر مريمي', hex: '#9CAF88' },
+      'mint': { ar: 'نعناعي', hex: '#98FF98' },
+      'green': { ar: 'أخضر', hex: '#008000' },
+
+      'aqua': { ar: 'تركوازي', hex: '#00BCD4' },
+      'orange': { ar: 'برتقالي', hex: '#FFA500' },
+      'yellow': { ar: 'أصفر', hex: '#FFD000' },
+
+      'aubergine': { ar: 'بنفسجي غامق', hex: '#580F41' },
+      'lilac': { ar: 'ليلكي', hex: '#C8A2C8' },
+
+      'ivory': { ar: 'عاجي', hex: '#FFFFF0' },
+      'off white': { ar: 'أوف وايت', hex: '#F8F8F2' },
+      'white': { ar: 'أبيض', hex: '#FFFFFF' },
+
+      'grey': { ar: 'رمادي', hex: '#808080' },
+      'gray': { ar: 'رمادي', hex: '#808080' },
+
+      'choco': { ar: 'بني شوكولا', hex: '#5D3A1A' },
+      'brown': { ar: 'بني', hex: '#8B4513' },
+      'nude': { ar: 'جلدي', hex: '#C8AD7F' },
+      'khaki': { ar: 'كاكي', hex: '#BDB76B' },
+
+      'black': { ar: 'أسود', hex: '#000000' },
+
+      // Not clear color — keep transliteration + neutral shade
+      'chala': { ar: 'شالا', hex: '#555555' },
+    };
+
+    // Longer keys first to avoid partial matches (e.g., "navy blue" before "blue")
+    const keys = Object.keys(colors).sort((a, b) => b.length - a.length);
+
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    let out = html;
+    for (const key of keys) {
+      const { ar, hex } = colors[key];
+      // word-ish boundaries: allow spaces / hyphens within keys
+      const rx = new RegExp(`(?<![\\w/])${esc(key)}(?![\\w/])`, 'gi');
+      out = out.replace(
+        rx,
+        () => `<span class="color-ar" style="color:${hex}; font-weight:inherit;">${ar}</span>`
+      );
+    }
+    return out;
+  }
   variantWithSizeRing(v?: string): SafeHtml {
     if (!v) return '';
     const re = /\b(XXL|XL|XS|[SML])\b/i;
@@ -34,13 +106,13 @@ export class PrintModalComponent {
     this.selectedOrder = order;
     this.showPrint = true;
   }
-  
+
   onModalClosed() {
     // fully reset so opening the same order again works
     this.showPrint = false;
     setTimeout(() => { this.selectedOrder = null; }, 0);
   }
-  
+
   /** Returns a displayable gateway string. */
   paymentGatewayDisplay(): string {
     const gw = (this.order?.paymentGateway
@@ -50,15 +122,15 @@ export class PrintModalComponent {
   }
   get zone(): 'N' | 'S' | 'M' | 'B' | null {
     const sm = (this.order?.shippingMethod || '').toLowerCase();
-  
+
     // NOTE: express handled separately
     if (/\bexpress\b/.test(sm)) return null;
-  
-    if (/north\s*lebanon/.test(sm))  return 'N';
-    if (/south\s*lebanon/.test(sm))  return 'S';
-    if (/mount\s*lebanon/.test(sm))  return 'M';
-    if (/bekaa/.test(sm))            return 'B';
-  
+
+    if (/north\s*lebanon/.test(sm)) return 'N';
+    if (/south\s*lebanon/.test(sm)) return 'S';
+    if (/mount\s*lebanon/.test(sm)) return 'M';
+    if (/bekaa/.test(sm)) return 'B';
+
     // Beirut or anything else → no badge
     return null;
   }
@@ -66,7 +138,7 @@ export class PrintModalComponent {
     const sizeMatch = text.match(/\b(xs|s|m|l|xl|xxl)\b/i);
     return sizeMatch ? sizeMatch[1].toUpperCase() : null;
   }
-  
+
 
   get zoneColor(): string {
     switch (this.zone) {
@@ -74,13 +146,13 @@ export class PrintModalComponent {
       case 'S': return '#2563eb'; // blue
       case 'M': return '#9333ea'; // purple
       case 'B': return '#eab308'; // yellow
-      default:  return '#999999';
+      default: return '#999999';
     }
   }
-  
-  
 
-  
+
+
+
   get isExpress(): boolean {
     return /\bexpress\b/i.test(this.order?.shippingMethod || '');
   }
@@ -113,11 +185,11 @@ export class PrintModalComponent {
     const host = this.printArea?.nativeElement;
     if (!host) { window.print(); return; }
 
-    const html = host.innerHTML;
-
+    let html = host.innerHTML;
+    html = this.applyPrintColorArabic(html);
     // minimal print styles for the popup/iframe only
-   // print-modal.component.ts  → inside print()  → replace the value of `css`:
-const css = `
+    // print-modal.component.ts  → inside print()  → replace the value of `css`:
+    const css = `
 <style>
   @page { margin: 12mm; }
   html, body { padding:0; margin:0; font-family:"Segoe UI",system-ui,sans-serif; color:#111; }
@@ -183,20 +255,22 @@ const css = `
     
   }
 /* ---------- SIZE RING (appears only in print) ---------- */
-  .size-ring{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:14px;
-    height:14px;
-    border:2px solid #333;   /* thin black circle, text color unchanged */
-    border-radius:50%;
-    line-height:1;
-    font-size:inherit;       /* keep the same font size */
-    font-weight:inherit;     /* keep the same weight */
-    vertical-align:baseline;
-    margin:0 2px;
-  }
+.size-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #d61f1f; /* 🔴 red circle border */
+  border-radius: 50%;
+  line-height: 1;
+  font-size: inherit;       /* keep size text unchanged */
+  font-weight: inherit;
+  color: inherit;           /* keep text color same */
+  vertical-align: baseline;
+  margin: 0 2px;
+}
+
   @media print { .cols{grid-template-columns:1fr 1fr} }
 </style>
 `;

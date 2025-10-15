@@ -125,10 +125,8 @@
                 <img *ngIf="i.IMAGE" [src]="i.IMAGE" class="thumb" alt="">
                 <div>
                   {{ i.TITLE }}
-                  <div *ngIf="i.VARIANT_TITLE"
-     class="muted"
-     [innerHTML]="variantWithSizeRing(i.VARIANT_TITLE)">
-</div>
+                  <div *ngIf="i.VARIANT_TITLE" class="muted" [innerHTML]="variantWithSizeRing(i.VARIANT_TITLE)">
+                  </div>
 
                 </div>
               </td>
@@ -136,11 +134,6 @@
             </tr>
           </tbody>
         </table>
-        <!-- <app-print-modal
-        [order]="selectedOrder"
-        [show]="showPrint"
-        (closed)="onModalClosed()">
-      </app-print-modal> -->
 
       </div>
 
