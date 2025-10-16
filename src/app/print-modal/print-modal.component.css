@@ -178,14 +178,27 @@
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:14px;                 /* small circle */
-  height:14px;
-  border:2px solid #333;      /* ring in print */
+
+  /* a touch bigger */
+  width:20px;
+  height:20px;
+
+  border:2px solid #d61f1f;
   border-radius:50%;
+  box-sizing:border-box;
+
+  /* a bit more inner air */
+  padding:2px 3px;
+
+  /* keep text readable */
+  font-size:10px;
   line-height:1;
-  font-size:inherit;          /* DO NOT change size text */
   font-weight:inherit;
-  vertical-align:baseline;
-  margin:0 2px;               /* tiny breathing room */
+  color:inherit;
+
+  /* space outside the circle */
+  vertical-align:middle;
+  margin:0 10px;
 }
+
 .order-info p { margin: 2px 0; }

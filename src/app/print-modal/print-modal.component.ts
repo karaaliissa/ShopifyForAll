@@ -70,14 +70,14 @@ private applyPrintColorArabic(html: string): string {
     // not clearly defined color → keep transliteration
     'chala':           { ar: 'شالا',            hex: '#555555' },
     // --- FABRICS ---
-    'cotton':            { ar: 'ميغابوي', hex: '#deb887' },
-    'cotton lycra':       { ar: 'ميغابوي', hex: '#f5deb3' },
-    'poplin':             { ar: 'بوبلين', hex: '#f8f8ff' },
-    'crepe half lycra':   { ar: 'كريب سكوبا', hex: '#e0b0ff' },
-    'leather':            { ar: 'جلد', hex: '#6f4e37' },
-    'satin':              { ar: 'ساتان', hex: '#ffefd5' },
-    'stretchy material':  { ar: 'جورسيه', hex: '#e6e6fa' },
-    'crepe without lycra':{ ar: 'باربي', hex: '#ffe4e1' },
+    'cotton':            { ar: 'ميغابوي', hex: '#000000' },
+    'cotton lycra':       { ar: 'ميغابوي', hex: '#000000' },
+    'poplin':             { ar: 'بوبلين', hex: '#000000' },
+    'crepe half lycra':   { ar: 'كريب سكوبا', hex: '#000000' },
+    'leather':            { ar: 'جلد', hex: '#000000' },
+    'satin':              { ar: 'ساتان', hex: '#000000' },
+    'stretchy material':  { ar: 'جورسيه', hex: '#000000' },
+    'crepe without lycra':{ ar: 'باربي', hex: '#000000' },
 
   };
 
@@ -264,21 +264,33 @@ private applyPrintColorArabic(html: string): string {
     
   }
 /* ---------- SIZE RING (appears only in print) ---------- */
-.size-ring {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  border: 2px solid #d61f1f; /* 🔴 red circle border */
-  border-radius: 50%;
-  line-height: 1;
-  font-size: inherit;       /* keep size text unchanged */
-  font-weight: inherit;
-  color: inherit;           /* keep text color same */
-  vertical-align: baseline;
-  margin: 0 2px;
+.size-ring{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
+  /* a touch bigger */
+  width:20px;
+  height:20px;
+
+  border:2px solid #d61f1f;
+  border-radius:50%;
+  box-sizing:border-box;
+
+  /* a bit more inner air */
+  padding:2px 3px;
+
+  /* keep text readable */
+  font-size:10px;
+  line-height:1;
+  font-weight:inherit;
+  color:inherit;
+
+  /* space outside the circle */
+  vertical-align:middle;
+  margin:0 10px;
 }
+
 
   @media print { .cols{grid-template-columns:1fr 1fr} }
 </style>

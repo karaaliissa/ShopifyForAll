@@ -91,7 +91,7 @@
                alt="Crop & Top">
         
           <div class="order-info">
-            <p>Order #{{ order?.orderName }}</p>
+            <p>Order {{ order?.orderName }}</p>
             <p>{{ order?.shipTo?.name }}</p>          <!-- 👈 customer name -->
             <p>{{ order?.shipTo?.city }}</p>
             <p>{{ order?.createdAt | date:'yyyy-MM-dd HH:mm' }}</p> <!-- 👈 date -->
