@@ -46,7 +46,7 @@
             <h3>Order Details</h3>
             <p><b>Shipping Method:</b> {{ order?.shippingMethod || '—' }}</p>
             <p><b>Payment Gateway:</b> {{ paymentGatewayDisplay() }}</p>
-            <p><b>COD:</b> {{ codText() }}</p>
+            <!-- <p><b>COD:</b> {{ codText() }}</p> -->
           </div>
         </div>
 
@@ -87,13 +87,17 @@
       <div *ngSwitchCase="'packing'" class="packing-wrapper">
         <div class="header-line">
           <img class="logo"
-            src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
-            alt="Crop & Top">
+               src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
+               alt="Crop & Top">
+        
           <div class="order-info">
-            <p>Order {{ order?.orderName }}</p>
+            <p>Order #{{ order?.orderName }}</p>
+            <p>{{ order?.shipTo?.name }}</p>          <!-- 👈 customer name -->
             <p>{{ order?.shipTo?.city }}</p>
+            <p>{{ order?.createdAt | date:'yyyy-MM-dd HH:mm' }}</p> <!-- 👈 date -->
           </div>
         </div>
+        
 
         <hr>
 
