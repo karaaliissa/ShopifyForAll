@@ -11,14 +11,15 @@
     <button (click)="switch('packing')" [class.active]="mode==='packing'">📦 Packing Slip</button>
     <button class="primary" (click)="print()">🖨 Print</button>
   </div>
+
   <div #printArea>
     <div class="print-content" [ngSwitch]="mode">
       <!-- ================= INVOICE ================= -->
       <div *ngSwitchCase="'invoice'" class="invoice-wrapper">
         <div class="header-line">
           <img class="logo"
-            src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
-            alt="Crop & Top">
+               src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
+               alt="Crop & Top" />
           <div class="order-info">
             <p>Order {{ order?.orderName }}</p>
             <p>{{ order?.createdAt | date:'MMM d, y' }}</p>
@@ -33,8 +34,8 @@
             <h3>Shipping Address</h3>
             <p>
               {{ order?.shipTo?.name }}<br>
-              {{ order?.shipTo?.address1 }}<span *ngIf="order?.shipTo?.address2">, {{ order?.shipTo?.address2
-                }}</span><br>
+              {{ order?.shipTo?.address1 }}
+              <span *ngIf="order?.shipTo?.address2">, {{ order?.shipTo?.address2 }}</span><br>
               {{ order?.shipTo?.city }}, {{ order?.shipTo?.province }} {{ order?.shipTo?.zip }}<br>
               {{ order?.shipTo?.country }}<br>
               <b>Tel:</b> {{ order?.shipTo?.phone }}
@@ -44,12 +45,10 @@
           <!-- RIGHT: Order details -->
           <div class="col">
             <h3>Order Details</h3>
-            <p><b>Shipping Method:</b> {{ order?.shippingMethod || '—' }}</p>
+            <p *ngIf="order?.shippingMethod"><b>Shipping Method:</b> {{ order?.shippingMethod }}</p>
             <p><b>Payment Gateway:</b> {{ paymentGatewayDisplay() }}</p>
-            <!-- <p><b>COD:</b> {{ codText() }}</p> -->
           </div>
         </div>
-
 
         <h3>Items</h3>
         <table class="items-table">
@@ -60,6 +59,7 @@
               <th class="right">Price</th>
             </tr>
           </thead>
+
           <tbody>
             <tr *ngFor="let i of order?.items">
               <td class="prod">
@@ -73,6 +73,18 @@
               <td class="right">{{ (i.UNIT_PRICE ?? i.PRICE) | currency:order?.currency }}</td>
             </tr>
           </tbody>
+
+          <!-- NEW summary rows -->
+          <tfoot>
+            <tr>
+              <td colspan="2" class="right muted">Subtotal</td>
+              <td class="right">{{ itemsSubtotal() | currency:order?.currency }}</td>
+            </tr>
+            <tr *ngIf="deliveryFee() > 0">
+              <td colspan="2" class="right muted">Delivery</td>
+              <td class="right">{{ deliveryFee() | currency:order?.currency }}</td>
+            </tr>
+          </tfoot>
         </table>
 
         <div class="total-line">
@@ -88,32 +100,28 @@
         <div class="header-line">
           <img class="logo"
                src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
-               alt="Crop & Top">
-        
+               alt="Crop & Top" />
           <div class="order-info">
             <p>Order {{ order?.orderName }}</p>
-            <p>{{ order?.shipTo?.name }}</p>          <!-- 👈 customer name -->
+            <p>{{ order?.shipTo?.name }}</p>
             <p>{{ order?.shipTo?.city }}</p>
-            <p>{{ order?.createdAt | date:'yyyy-MM-dd HH:mm' }}</p> <!-- 👈 date -->
+            <p>{{ order?.createdAt | date:'yyyy-MM-dd HH:mm' }}</p>
           </div>
         </div>
-        
 
         <hr>
 
-        <!-- PRINT-ONLY OVERLAY (nothing shows on screen) -->
-        <!-- PRINT-ONLY OVERLAY (nothing shows on screen) -->
-        <div *ngIf="isExpress || zone" class="zone-badge print-only" [class.express]="isExpress"
-          [ngStyle]="!isExpress ? {'--badge-color': zoneColor} : null">
-
+        <!-- PRINT-ONLY OVERLAY -->
+        <div *ngIf="isExpress || zone"
+             class="zone-badge print-only"
+             [class.express]="isExpress"
+             [ngStyle]="!isExpress ? {'--badge-color': zoneColor} : null">
           <div *ngIf="!isExpress" class="circle">{{ zone }}</div>
-
           <div *ngIf="isExpress" class="express-text">
             EXPRESS
             <div class="ar">مستعجل</div>
           </div>
-        </div> <!-- ✅ CLOSE THE OVERLAY WRAPPER -->
-
+        </div>
 
         <h3>Packing Slip</h3>
         <table class="items-table">
@@ -129,20 +137,16 @@
                 <img *ngIf="i.IMAGE" [src]="i.IMAGE" class="thumb" alt="">
                 <div>
                   {{ i.TITLE }}
-                  <div *ngIf="i.VARIANT_TITLE" class="muted" [innerHTML]="variantWithSizeRing(i.VARIANT_TITLE)">
-                  </div>
-
+                  <div *ngIf="i.VARIANT_TITLE"
+                       class="muted"
+                       [innerHTML]="variantWithSizeRing(i.VARIANT_TITLE)"></div>
                 </div>
               </td>
               <td>{{ i.QUANTITY }}</td>
             </tr>
           </tbody>
         </table>
-
       </div>
-
-
     </div>
-
   </div>
 </div>
