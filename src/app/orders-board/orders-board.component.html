@@ -79,6 +79,7 @@
           <th>Total</th>
           <th>Code Used</th>
           <th>Source</th>
+          <th>Actions</th>
         </tr>
       </thead>
 
@@ -234,7 +235,9 @@
 
           <!-- Source -->
           <td class="muted">{{ o.sourceName || '—' }}</td>
-
+          <td class="num">
+            <button class="btn primary" (click)="onPrintAndProcess(o)">🖨 Print</button>
+          </td>
         </tr>
       </tbody>
     </table>

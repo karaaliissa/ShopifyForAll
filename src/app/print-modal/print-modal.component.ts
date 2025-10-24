@@ -248,4 +248,123 @@ export class PrintModalComponent {
       }
     });
   }
+  private buildPrintCSS(): string {
+    return `
+  <style>
+    @page { margin: 12mm; }
+    html, body { padding:0; margin:0; font-family:"Segoe UI",system-ui,sans-serif; color:#111; }
+    .header-line{display:flex;justify-content:space-between;align-items:flex-start;}
+    .logo{width:240px;height:auto}
+    .order-info{text-align:right;font-size:14px}
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin:8px 0 16px}
+    .col h3{margin:0 0 6px}
+    hr{border:0;border-top:1px solid #e5e7eb;margin:12px 0}
+  
+    .items-table{width:100%;border-collapse:collapse;margin-top:.5rem}
+    .items-table th,.items-table td{padding:8px 6px;border-bottom:1px solid #e5e7eb;font-size:14px}
+    .items-table th{text-align:left;font-weight:600}
+    .right{text-align:right}
+    .prod{display:flex;align-items:center;gap:8px}
+    .thumb{width:45px;height:45px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
+    .muted{font-size:12px;color:#666}
+    .items-table tfoot td{font-weight:600}
+    .items-table tfoot .muted{color:#666;font-weight:500}
+  
+    .total-line{display:flex;justify-content:flex-end;margin-top:1rem;font-size:18px;font-weight:600}
+    .footer-note{text-align:center;margin-top:2rem;font-size:14px;color:#555}
+  
+    /* badge + packing overrides (same as your print()) */
+    .zone-badge{
+      position:fixed; top:8mm; left:50%; transform:translateX(-50%);
+      z-index:99999; text-align:center; pointer-events:none;
+    }
+    .zone-badge .circle{
+      --badge-size:120px; width:var(--badge-size); height:var(--badge-size);
+      border-radius:50%; border:8px solid var(--badge-color,#1FA64A);
+      color:var(--badge-color,#1FA64A);
+      display:flex; align-items:center; justify-content:center;
+      font-weight:900; font-size:68px; line-height:1; margin:0 auto;
+    }
+    .zone-badge.express .circle{ display:none; }
+    .zone-badge.express .express-text{ color:#d61f1f; font-weight:900; font-size:54px; line-height:1.05; }
+    .zone-badge.express .express-text .ar{ font-size:30px; }
+  
+    .packing-wrapper .items-table .thumb{ width:100px !important; height:100px !important; }
+  
+    .size-ring{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:20px; height:20px; border:2px solid #d61f1f; border-radius:50%;
+      box-sizing:border-box; padding:2px 3px; font-size:10px; line-height:1; color:inherit;
+      vertical-align:middle; margin:0 10px;
+    }
+  
+    .page-break { page-break-after: always; height: 0; overflow: hidden; }
+  </style>`;
+  }
+  
+  private nextTick(): Promise<void> {
+    return new Promise(res => setTimeout(res, 0));
+  }
+  
+  private async captureHTML(mode: 'invoice' | 'packing'): Promise<string> {
+    // switch mode and wait for Angular to render
+    this.mode = mode;
+    await this.nextTick();
+    const host = this.printArea?.nativeElement;
+    if (!host) return '';
+    let html = host.innerHTML;
+    if (mode === 'packing') {
+      html = this.applyPrintColorArabic(html);
+    }
+    return html;
+  }
+  
+  /** Public: print 2× invoice + 1× packing in one job */
+  async printBundle(copies = { invoice: 2, packing: 1 }): Promise<void> {
+    // Render both templates once
+    const invoiceHTML = await this.captureHTML('invoice');
+    const packingHTML = await this.captureHTML('packing');
+  
+    // Build combined document: [invoice, invoice, packing]
+    const parts: string[] = [];
+    for (let i = 0; i < (copies.invoice || 0); i++) {
+      parts.push(`<div class="print-content invoice-wrapper">${invoiceHTML}</div>`);
+      parts.push(`<div class="page-break"></div>`);
+    }
+    for (let i = 0; i < (copies.packing || 0); i++) {
+      parts.push(`<div class="print-content packing-wrapper">${packingHTML}</div>`);
+      if (i < (copies.packing - 1)) parts.push(`<div class="page-break"></div>`);
+    }
+  
+    const css = this.buildPrintCSS();
+  
+    // Hidden iframe (same pattern as your print())
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+  
+    const doc = iframe.contentWindow!.document;
+    doc.open();
+    doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Print</title>${css}</head><body>${parts.join('')}</body></html>`);
+    doc.close();
+  
+    const w = iframe.contentWindow!;
+    const imgs = Array.from(doc.images || []);
+    const done = () => { w.focus(); w.print(); setTimeout(() => document.body.removeChild(iframe), 100); };
+  
+    if (!imgs.length) { done(); return; }
+    let left = imgs.length;
+    imgs.forEach(img => {
+      if (img.complete) { if (--left === 0) done(); }
+      else {
+        img.addEventListener('load',  () => { if (--left === 0) done(); });
+        img.addEventListener('error', () => { if (--left === 0) done(); });
+      }
+    });
+  }
 }

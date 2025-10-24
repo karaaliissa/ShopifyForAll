@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Order, OrdersService } from '../services/orders.service';
-import { map, catchError, of } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ExportService } from '../services/export.service';
 import { PrintModalComponent } from '../print-modal/print-modal.component';
@@ -14,7 +14,9 @@ import { PrintModalComponent } from '../print-modal/print-modal.component';
   templateUrl: './orders-board.component.html',
   styleUrls: ['./orders-board.component.css']
 })
+
 export class OrdersBoardComponent implements OnInit {
+  @ViewChild(PrintModalComponent) printModal?: PrintModalComponent;
   orders: (Order & { items?: any[] })[] = [];
   loading = false;
   error = '';
@@ -217,4 +219,40 @@ export class OrdersBoardComponent implements OnInit {
     if (!json) return [];
     try { return JSON.parse(json); } catch { return []; }
   }
+  private ensureItemsLoaded(o: Order & { items?: any[] }): Promise<void> {
+    if (o.items && o.items.length >= 0) return Promise.resolve();
+    return firstValueFrom(this.ordersSvc.getOrderItems(o.shopDomain, o.orderId))
+      .then(items => { o.items = items || []; })
+      .catch(() => { /* ignore; print still works without thumbs */ });
+  }
+  // NEW
+async onPrintAndProcess(o: Order & { items?: any[] }) {
+  // 1) Optimistically add "Processing" tag (if not already)
+  const already = (o.tags || []).map(t => t.toLowerCase()).includes('processing');
+  const prev = [...(o.tags || [])];
+  if (!already) {
+    o.tags = [...(o.tags || []), 'Processing'];
+    this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, 'Processing').subscribe({
+      next: r => { if (!r?.ok) o.tags = prev; },
+      error: () => { o.tags = prev; }
+    });
+  }
+
+  // 2) Make sure item images are loaded (optional)
+  await this.ensureItemsLoaded(o);
+
+  // 3) Open modal and trigger multi-print
+  this.selectedOrder = o;
+  this.showPrint = true;
+
+  // Wait a tick for the modal to mount, then call printBundle
+  setTimeout(async () => {
+    try {
+      await this.printModal?.printBundle({ invoice: 2, packing: 1 });
+    } finally {
+      // 4) Close modal after print
+      this.onModalClosed();
+    }
+  }, 50);
+}
 }
