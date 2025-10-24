@@ -17,6 +17,7 @@ import { PrintModalComponent } from '../print-modal/print-modal.component';
 
 export class OrdersBoardComponent implements OnInit {
   @ViewChild(PrintModalComponent) printModal?: PrintModalComponent;
+  activeTab: 'orders' | 'list' = 'orders';
   orders: (Order & { items?: any[] })[] = [];
   loading = false;
   error = '';
@@ -26,7 +27,70 @@ export class OrdersBoardComponent implements OnInit {
   exportShop = 'cropndtop.myshopify.com';
   exportDate = new Date().toISOString().slice(0, 10);
   private has(o: Order, t: string) { return o.tags.map(x => x.toLowerCase()).includes(t.toLowerCase()); }
+  private isComplete(o: Order) { return this.has(o, 'complete'); }
+
   constructor(private ordersSvc: OrdersService, private exportSvc: ExportService) { }
+  // get filteredOrders(): (Order & { items?: any[] })[] {
+  //   if (this.activeTab === 'complete') return this.orders.filter(o => this.isComplete(o));
+  //   return this.orders.filter(o => !this.isComplete(o));
+  // }
+  // ---- Canonical status per order ----
+  statusOf(o: Order): 'pending' | 'processing' | 'shipped' | 'complete' | 'cancel' {
+    // priority by business flow
+    if (this.has(o, 'complete'))   return 'complete';
+    if (this.has(o, 'cancel'))     return 'cancel';
+    if (this.has(o, 'shipped'))    return 'shipped';
+    if (this.has(o, 'processing')) return 'processing';
+
+    // else: pending if tag says so OR fulfillment looks open/unfulfilled/empty
+    const f = (o.fulfillmentStatus || '').toString().trim().toLowerCase();
+    if (this.has(o, 'pending') || f === '' || f === 'open' || f === 'unfulfilled') {
+      return 'pending';
+    }
+    // fallback: treat unknowns as pending
+    return 'pending';
+  }
+  private statusIs(o: Order, s: ReturnType<OrdersBoardComponent['statusOf']>) {
+    return this.statusOf(o) === s;
+  }
+  get pendingCount()    { return this.orders.filter(o => this.statusOf(o) === 'pending').length; }
+  get processingCount() { return this.orders.filter(o => this.statusOf(o) === 'processing').length; }
+  get shippedCount()    { return this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
+  get completeCount()   { return this.orders.filter(o => this.statusOf(o) === 'complete').length; }
+  get cancelCount()     { return this.orders.filter(o => this.statusOf(o) === 'cancel').length; }
+  get expressPendingCount() {
+    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'pending')).length;
+  }
+  get expressProcessingCount() {
+    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'processing')).length;
+  }
+  get expressShippedCount() {
+    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'shipped')).length;
+  }
+  get expressCompleteCount() {
+    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'complete')).length;
+  }
+  get expressCancelCount() {
+    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'cancel')).length;
+  }
+  // Left badge label/class (use the same canonical status)
+  fulfillmentLabel(o: Order): string {
+    const m = this.statusOf(o);
+    // Capitalize for display
+    return m.charAt(0).toUpperCase() + m.slice(1);
+  }
+  fulfillmentClass(o: Order): string {
+    return this.statusOf(o); // maps to .badge.pending / .badge.processing ...
+  }
+ // Totals (all orders)
+ get grandTotal(): number {
+  return (this.orders || []).reduce((sum, o: any) => sum + (o.total || 0), 0);
+}
+get totalsCurrency(): string | undefined {
+  return this.orders?.find(o => !!o.currency)?.currency;
+}
+  // (totalsCurrency unchanged)
+
   nextActions(o: Order): string[] {
     const hasProcessing = this.has(o, 'processing');
     const hasShipped = this.has(o, 'shipped');
@@ -207,14 +271,7 @@ export class OrdersBoardComponent implements OnInit {
     return (tags || []).map(t => t.trim()).filter(t => t.length > 0);
   }
 
-  get grandTotal(): number {
-    return (this.orders || []).reduce((sum, o: any) => sum + (o.total || 0), 0);
-  }
-
-  get totalsCurrency(): string | undefined {
-    return this.orders?.find(o => !!o.currency)?.currency;
-  }
-
+  
   parseProps(json?: string): { name: string; value: any }[] {
     if (!json) return [];
     try { return JSON.parse(json); } catch { return []; }

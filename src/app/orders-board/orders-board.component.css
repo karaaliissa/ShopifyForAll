@@ -279,3 +279,12 @@ tr:hover { background: #f9fafb; }
   background-color: red;
 } */
 .thumb--blank { width:36px; height:36px; border-radius:6px; background:#eee; }
+.status-bar.express-bar { margin-top: 6px; }
+.pill.express {
+  background: #dc2626;      /* red-600 */
+  color: #fff;
+  border-color: #b91c1c;    /* red-700 */
+}
+.pill.express:hover {
+  filter: brightness(0.95);
+}

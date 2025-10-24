@@ -12,9 +12,30 @@
       {{ loading ? 'Loading…' : 'Fetch orders' }}
     </button>
   </div>
+  
+<!-- Status counters (existing) -->
+
+<!-- NEW: Status counters -->
+<div class="status-bar">
+  <button class="btn stat pill pending" style="background-color: violet ; color: black">Pending {{ pendingCount }}</button>
+  <button class="btn stat pill processing" style="background-color: cornflowerblue ; color: black">Processing {{ processingCount }}</button>
+  <button class="btn stat pill shipped" style="background-color: gold ; color: black">Shipped {{ shippedCount }}</button>
+  <button class="btn btn success stat pill complete" style="color: black;">Complete {{ completeCount }}</button>
+  <button class="btn btn link stat pill cancel" style="color: black;">Canceled {{ cancelCount }}</button>
+</div>
+
+<!-- NEW: Express counters (red buttons) -->
+<div class="status-bar express-bar">
+  <button class="btn pill express">Express Pending {{ expressPendingCount }}</button>
+  <button class="btn pill express">Express Processing {{ expressProcessingCount }}</button>
+  <button class="btn pill express">Express Shipped {{ expressShippedCount }}</button>
+  <button class="btn pill express">Express Complete {{ expressCompleteCount }}</button>
+  <button class="btn pill express">Express Canceled {{ expressCancelCount }}</button>
+</div>
+
 
   <!-- Filters -->
-  <div class="filters">
+  <!-- <div class="filters">
     <select>
       <option>Status: Any</option>
       <option>Status: Open</option>
@@ -44,15 +65,15 @@
         {{ grandTotal | number:'1.0-2' }} {{ totalsCurrency || '' }}
       </ng-template>
     </td>
-  </div>
+  </div> -->
 
   <!-- quick shipday export controls -->
-  <input [(ngModel)]="exportShop" placeholder="shop domain" />
+  <!-- <input [(ngModel)]="exportShop" placeholder="shop domain" />
   <input type="date" [(ngModel)]="exportDate" />
-  <button (click)="exportShipday()">Export Shipday CSV</button>
+  <button (click)="exportShipday()">Export Shipday CSV</button> -->
 
   <!-- Toolbar -->
-  <div class="toolbar">
+  <!-- <div class="toolbar">
     <div class="actions-left">
       <button class="btn">Picking list</button>
       <button class="btn">Packing slips</button>
@@ -64,47 +85,58 @@
       <button class="btn info">Export</button>
       <button class="btn danger">Archive</button>
     </div>
-  </div>
+  </div> -->
+<!-- List tab placeholder (HTML only) -->
+<div *ngIf="activeTab==='list'" class="card table-wrapper" style="padding:16px;">
+  <b>List</b> — (Coming next: same area will show Picking List / Packing Slips style table)
+</div>
+<br>
+<br>
+ <!-- NEW: Main tabs (HTML-only) -->
+ <div class="tabs tabs--main">
+  <button class="btn tab" [class.active]="activeTab==='orders'" (click)="activeTab='orders'">Orders</button>
+  <button class="btn tab" [class.active]="activeTab==='list'" (click)="activeTab='list'">List</button>
+</div>
+ <!-- Orders Table -->
+ <div *ngIf="activeTab==='orders'" class="card table-wrapper" [hidden]="loading || !orders?.length">
+  <table>
+    <thead>
+      <tr>
+        <th>Order</th>
+        <th>Tags</th>
+        <th>Products</th>
+        <th>Shipping Info</th>
+        <th>Method / Notes</th>
+        <th>Total</th>
+        <th>Code Used</th>
+        <th>Source</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
 
-  <!-- Orders Table -->
-  <div class="card table-wrapper" *ngIf="!loading && orders?.length">
-    <table>
-      <thead>
-        <tr>
-          <th>Order</th>
-          <th>Tags</th>
-          <th>Products</th>
-          <th>Shipping Info</th>
-          <th>Method / Notes</th>
-          <th>Total</th>
-          <th>Code Used</th>
-          <th>Source</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <tr *ngFor="let o of orders">
-          <!-- Order -->
-          <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
-            <div class="order-id">
-              <!-- <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
-                {{ o.orderName || o.orderId }}
-              </div> -->
-              <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }" (click)="openPrintModal(o)">
-                {{ o.orderName || o.orderId }}
-              </div>
-
-              <div class="customer">{{ o.shipTo?.name }}</div>
-              <div class="date">{{ o.createdAt | date:'medium' }}</div>
-              <div class="badges">
-                <span class="badge open">{{ o.fulfillmentStatus || 'Open' }}</span>
-                <span class="badge" [ngClass]="(o.financialStatus||'').toLowerCase()">
-                  {{ o.financialStatus }}
-                </span>
-              </div>
+    <tbody>
+      <tr *ngFor="let o of orders">
+        <!-- Order -->
+        <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+          <div class="order-id">
+            <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }" (click)="openPrintModal(o)">
+              {{ o.orderName || o.orderId }}
             </div>
-          </td>
+            <div class="customer">{{ o.shipTo?.name }}</div>
+            <div class="date">{{ o.createdAt | date:'medium' }}</div>
+            <div class="badges">
+              <!-- single canonical status pill -->
+              <span class="badge" [ngClass]="fulfillmentClass(o)">{{ fulfillmentLabel(o) }}</span>
+            
+              <!-- financial status pill unchanged -->
+              <span class="badge" [ngClass]="(o.financialStatus||'').toLowerCase()">
+                {{ o.financialStatus }}
+              </span>
+            </div>
+            
+            
+          </div>
+        </td>
 
           <!-- Tags -->
           <!-- <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
@@ -124,20 +156,13 @@
           <td>
             <div class="badges">
               <span *ngFor="let t of o.tags" class="tag" [ngClass]="t.toLowerCase()">
-                {{ t }}
-                <button class="tag-x" (click)="removeTag(o, t)" title="Remove">×</button>
+                {{ t }} <button class="tag-x" (click)="removeTag(o, t)" title="Remove">×</button>
               </span>
             </div>
-
-            <!-- <select (change)="onNextAction(o, $event)">
-              <option value="">Add tag</option>
-              <option *ngFor="let opt of nextActions(o)" [value]="opt">{{ opt }}</option>
-            </select> -->
             <select (change)="onNextAction(o, $event)">
               <option value="">Add tag</option>
               <option *ngFor="let opt of nextActions(o)" [value]="opt">{{ opt }}</option>
             </select>
-
           </td>
 
           <!-- Products (qty × unit = line total) -->
