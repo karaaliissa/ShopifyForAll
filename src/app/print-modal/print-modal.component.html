@@ -18,8 +18,8 @@
       <div *ngSwitchCase="'invoice'" class="invoice-wrapper">
         <div class="header-line">
           <img class="logo"
-               src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
-               alt="Crop & Top" />
+            src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
+            alt="Crop & Top" />
           <div class="order-info">
             <p>Order {{ order?.orderName }}</p>
             <p>{{ order?.createdAt | date:'MMM d, y' }}</p>
@@ -99,8 +99,8 @@
       <div *ngSwitchCase="'packing'" class="packing-wrapper">
         <div class="header-line">
           <img class="logo"
-               src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
-               alt="Crop & Top" />
+            src="https://cdn.shopify.com/s/files/1/0624/4895/9656/files/LOGO_C_T-01_450x.png?v=1672858533"
+            alt="Crop & Top" />
           <div class="order-info">
             <p>Order {{ order?.orderName }}</p>
             <p>{{ order?.shipTo?.name }}</p>
@@ -112,10 +112,8 @@
         <hr>
 
         <!-- PRINT-ONLY OVERLAY -->
-        <div *ngIf="isExpress || zone"
-             class="zone-badge print-only"
-             [class.express]="isExpress"
-             [ngStyle]="!isExpress ? {'--badge-color': zoneColor} : null">
+        <div *ngIf="isExpress || zone" class="zone-badge print-only" [class.express]="isExpress"
+          [ngStyle]="!isExpress ? {'--badge-color': zoneColor} : null">
           <div *ngIf="!isExpress" class="circle">{{ zone }}</div>
           <div *ngIf="isExpress" class="express-text">
             EXPRESS
@@ -137,9 +135,7 @@
                 <img *ngIf="i.IMAGE" [src]="i.IMAGE" class="thumb" alt="">
                 <div>
                   {{ i.TITLE }}
-                  <div *ngIf="i.VARIANT_TITLE"
-                       class="muted"
-                       [innerHTML]="variantWithSizeRing(i.VARIANT_TITLE)"></div>
+                  <div *ngIf="i.VARIANT_TITLE" class="muted" [innerHTML]="variantWithSizeRing(i.VARIANT_TITLE)"></div>
                 </div>
               </td>
               <td>{{ i.QUANTITY }}</td>

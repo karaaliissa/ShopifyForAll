@@ -247,11 +247,7 @@
     No orders yet.
   </div>
   <!-- mount only when needed + listen for close -->
-<app-print-modal
-*ngIf="showPrint"
-[order]="selectedOrder"
-[show]="showPrint"
-(closed)="onModalClosed()">
-</app-print-modal>
+  <app-print-modal *ngIf="showPrint" [order]="selectedOrder" [show]="showPrint" (closed)="onModalClosed()">
+  </app-print-modal>
 
 </div>

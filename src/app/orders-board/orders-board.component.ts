@@ -9,7 +9,7 @@ import { PrintModalComponent } from '../print-modal/print-modal.component';
 @Component({
   selector: 'app-orders-board',
   standalone: true,
-  imports: [CommonModule, FormsModule,PrintModalComponent],
+  imports: [CommonModule, FormsModule, PrintModalComponent],
   providers: [DatePipe],
   templateUrl: './orders-board.component.html',
   styleUrls: ['./orders-board.component.css']
@@ -26,24 +26,24 @@ export class OrdersBoardComponent implements OnInit {
   exportShop = 'cropndtop.myshopify.com';
   exportDate = new Date().toISOString().slice(0, 10);
   private has(o: Order, t: string) { return o.tags.map(x => x.toLowerCase()).includes(t.toLowerCase()); }
-  constructor(private ordersSvc: OrdersService, private exportSvc: ExportService) {}
+  constructor(private ordersSvc: OrdersService, private exportSvc: ExportService) { }
   nextActions(o: Order): string[] {
     const hasProcessing = this.has(o, 'processing');
-    const hasShipped    = this.has(o, 'shipped');
-    const hasComplete   = this.has(o, 'complete');
-    const hasCancel     = this.has(o, 'cancel');
-  
+    const hasShipped = this.has(o, 'shipped');
+    const hasComplete = this.has(o, 'complete');
+    const hasCancel = this.has(o, 'cancel');
+
     if (hasComplete) return [];                 // locked
-    if (hasShipped)  return ['Complete'];       // only move to complete
-    if (hasProcessing) return ['Shipped','Cancel'];
+    if (hasShipped) return ['Complete'];       // only move to complete
+    if (hasProcessing) return ['Shipped', 'Cancel'];
     if (hasCancel) return [];                   // cancelled → no further actions
-    return ['Processing','Cancel'];             // start state
+    return ['Processing', 'Cancel'];             // start state
   }
-  
+
   // onNextAction(o: Order, e: Event) {
   //   const value = (e.target as HTMLSelectElement).value;
   //   if (!value) return;
-  
+
   //   // Prevent regress after Complete
   //   if (this.has(o, 'complete') && value.toLowerCase() !== 'complete') {
   //     (e.target as HTMLSelectElement).value = '';
@@ -64,29 +64,29 @@ export class OrdersBoardComponent implements OnInit {
     const sel = e.target as HTMLSelectElement;
     const value = sel.value;
     if (!value) return;
-  
+
     // guard: don't allow regress after Complete
     if (this.has(o, 'complete') && value.toLowerCase() !== 'complete') {
       sel.value = '';
       alert('Order is complete. You cannot move it back.');
       return;
     }
-  
+
     // optimistic add (keep history)
     const prev = [...o.tags];
     const already = o.tags.map(t => t.toLowerCase()).includes(value.toLowerCase());
     if (!already) o.tags = [...o.tags, value];
-  
+
     this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
       next: r => { if (!r?.ok) o.tags = prev; },  // rollback on soft error
       error: () => { o.tags = prev; }             // rollback on network error
     });
-  
+
     // reset dropdown to "Add tag"
     sel.selectedIndex = 0;
   }
   // 🚫 No auto-load. Leave empty if you truly want manual fetch only.
-  ngOnInit() {}
+  ngOnInit() { }
 
   /** Manually fetch orders + their items */
   fetch() {
@@ -175,29 +175,29 @@ export class OrdersBoardComponent implements OnInit {
   onTagChange(o: Order, event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     if (!value) return;
-  
+
     // Add and persist (keep history), optimistic UI
     const prev = [...(o.tags || [])];
     const already = (o.tags || []).map(t => t.toLowerCase()).includes(value.toLowerCase());
     if (!already) o.tags = [...(o.tags || []), value];
-  
+
     this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
       next: r => { if (!r?.ok) o.tags = prev; },   // rollback on soft error
       error: () => { o.tags = prev; }              // rollback on network error
     });
-  
+
     (event.target as HTMLSelectElement).value = '';
   }
-  
+
   removeTag(o: Order, tag: string) {
     // Optional guard: don’t allow removing 'complete' without confirmation
     if (tag.toLowerCase() === 'complete') {
       if (!confirm('This order is Complete. Are you sure you want to remove that status?')) return;
     }
-  
+
     const prev = [...o.tags];
     o.tags = o.tags.filter(t => t.toLowerCase() !== tag.toLowerCase());
-  
+
     this.ordersSvc.removeTagRemote(o.shopDomain, o.orderId, tag).subscribe({
       next: r => { if (!r?.ok) o.tags = prev; },
       error: () => { o.tags = prev; }
@@ -226,33 +226,33 @@ export class OrdersBoardComponent implements OnInit {
       .catch(() => { /* ignore; print still works without thumbs */ });
   }
   // NEW
-async onPrintAndProcess(o: Order & { items?: any[] }) {
-  // 1) Optimistically add "Processing" tag (if not already)
-  const already = (o.tags || []).map(t => t.toLowerCase()).includes('processing');
-  const prev = [...(o.tags || [])];
-  if (!already) {
-    o.tags = [...(o.tags || []), 'Processing'];
-    this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, 'Processing').subscribe({
-      next: r => { if (!r?.ok) o.tags = prev; },
-      error: () => { o.tags = prev; }
-    });
-  }
-
-  // 2) Make sure item images are loaded (optional)
-  await this.ensureItemsLoaded(o);
-
-  // 3) Open modal and trigger multi-print
-  this.selectedOrder = o;
-  this.showPrint = true;
-
-  // Wait a tick for the modal to mount, then call printBundle
-  setTimeout(async () => {
-    try {
-      await this.printModal?.printBundle({ invoice: 2, packing: 1 });
-    } finally {
-      // 4) Close modal after print
-      this.onModalClosed();
+  async onPrintAndProcess(o: Order & { items?: any[] }) {
+    // 1) Optimistically add "Processing" tag (if not already)
+    const already = (o.tags || []).map(t => t.toLowerCase()).includes('processing');
+    const prev = [...(o.tags || [])];
+    if (!already) {
+      o.tags = [...(o.tags || []), 'Processing'];
+      this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, 'Processing').subscribe({
+        next: r => { if (!r?.ok) o.tags = prev; },
+        error: () => { o.tags = prev; }
+      });
     }
-  }, 50);
-}
+
+    // 2) Make sure item images are loaded (optional)
+    await this.ensureItemsLoaded(o);
+
+    // 3) Open modal and trigger multi-print
+    this.selectedOrder = o;
+    this.showPrint = true;
+
+    // Wait a tick for the modal to mount, then call printBundle
+    setTimeout(async () => {
+      try {
+        await this.printModal?.printBundle({ invoice: 2, packing: 1 });
+      } finally {
+        // 4) Close modal after print
+        this.onModalClosed();
+      }
+    }, 50);
+  }
 }
