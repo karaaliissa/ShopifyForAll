@@ -42,7 +42,7 @@ export class OrdersBoardComponent implements OnInit {
   }
   printCards() {
     // collect rows: flatten dateCards order entries
-    const rows: Array<{ store: string, orderName: string, customer: string, city: string, dateLabel: string, note?: string }> = [];
+    const rows: Array<{ store: string, orderName: string, customer: string, city: string, date: string, note?: string }> = [];
     for (const day of this.dateCards) {
       for (const o of (day.orders || [])) {
         rows.push({
@@ -50,8 +50,8 @@ export class OrdersBoardComponent implements OnInit {
           orderName: o.orderName || `#${o.orderId}`,
           customer: o.shipTo?.name || '',
           city: o.shipTo?.city || '',
-          dateLabel: day.dateLabel,                // human-friendly date label (Mon, 01/01/2025)
-          note: (o.noteLocal || '')                // local note entered in date modal
+          date: day.dateISO,
+          note: (o.noteLocal || '')  // your note field
         });
       }
     }
@@ -65,27 +65,39 @@ export class OrdersBoardComponent implements OnInit {
     const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
     if (!win) { alert('Popup blocked. Allow popups to print.'); return; }
   
+    // 🔹 Collect the last 3 open order numbers
+    const lastThree = (this.last3OpenOrders || [])
+      .map(o => this.escapeHtml(o.orderName || `#${o.orderId}`))
+      .join(' , ');
+  
     const style = `
       <style>
         body{font-family:Segoe UI,system-ui,sans-serif;padding:16px;color:#111}
-        h1{font-size:18px;margin:0 0 12px 0}
-        table{width:100%;border-collapse:collapse}
+        h1{font-size:18px;margin:0 0 8px 0}
+        .small{font-size:0.85rem;color:#555;margin-bottom:10px}
+        table{width:100%;border-collapse:collapse;margin-top:12px}
         th,td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
         th{background:#f5f5f5}
         .note{white-space:pre-wrap;font-size:0.95rem;color:#333}
-        .small{font-size:0.85rem;color:#555}
+        .last3{margin:6px 0 12px 0;font-size:0.9rem}
         @media print { body{padding:8px} }
       </style>
     `;
   
-    const head = `<h1>Delivery cards — ${this.printStoreName}</h1><p class="small">Printed: ${new Date().toLocaleString()}</p>`;
+    // 🔹 Add the list of last 3 order numbers above the table
+    const head = `
+      <h1>Delivery cards — ${this.printStoreName}</h1>
+      <p class="small">Printed: ${new Date().toLocaleString()}</p>
+      <div class="last3"><b>Last 3 open orders:</b> ${lastThree || '(none)'}</div>
+    `;
+  
     const tableHead = `<table><thead><tr><th>Order</th><th>Customer</th><th>City</th><th>Deliver Date</th><th>Note (local)</th></tr></thead><tbody>`;
     const tableRows = rows.map(r => `
       <tr>
         <td><strong>${this.escapeHtml(r.orderName)}</strong><div class="small">${this.escapeHtml(r.store)}</div></td>
         <td>${this.escapeHtml(r.customer)}</td>
         <td>${this.escapeHtml(r.city)}</td>
-        <td>${this.escapeHtml(r.dateLabel)}</td>
+        <td>${this.escapeHtml(r.date)}</td>
         <td class="note">${this.escapeHtml(r.note || '')}</td>
       </tr>
     `).join('');
@@ -94,14 +106,19 @@ export class OrdersBoardComponent implements OnInit {
     win.document.write(`<html><head><title>Print delivery cards</title>${style}</head><body>${head}${tableHead}${tableRows}${tableFooter}</body></html>`);
     win.document.close();
   
-    // small helper to wait a tick before printing
     setTimeout(() => {
       win.focus();
       win.print();
-      // optionally close window after printing:
-      // setTimeout(()=>win.close(), 500);
     }, 300);
   }
+  
+  // function escapeHtml(s: string) {
+  //   return (s || '').toString().replace(/&/g,'&amp;')
+  //                              .replace(/</g,'&lt;')
+  //                              .replace(/>/g,'&gt;')
+  //                              .replace(/"/g,'&quot;');
+  // }
+  
   
   private escapeHtml(s: string) {
     return (s || '').toString()
