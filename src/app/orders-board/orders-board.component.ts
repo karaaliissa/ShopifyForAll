@@ -5,11 +5,12 @@ import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ExportService } from '../services/export.service';
 import { PrintModalComponent } from '../print-modal/print-modal.component';
+import { DeliveryDateModalComponent } from '../delivery-date-modal/delivery-date-modal.component';
 
 @Component({
   selector: 'app-orders-board',
   standalone: true,
-  imports: [CommonModule, FormsModule, PrintModalComponent],
+  imports: [CommonModule, FormsModule, PrintModalComponent, DeliveryDateModalComponent],
   providers: [DatePipe],
   templateUrl: './orders-board.component.html',
   styleUrls: ['./orders-board.component.css']
@@ -18,6 +19,12 @@ import { PrintModalComponent } from '../print-modal/print-modal.component';
 export class OrdersBoardComponent implements OnInit {
   @ViewChild(PrintModalComponent) printModal?: PrintModalComponent;
   activeTab: 'orders' | 'list' = 'orders';
+  showDateModal = false;
+  dateModalOrder: any = null;
+  onlyDated = false; // optional toggle in List tab
+  initialDeliverBy: string | null = null;
+  initialNote : string | null = null;
+  listCardMax = 20; // show up to 20 non-empty day cards
   orders: (Order & { items?: any[] })[] = [];
   loading = false;
   error = '';
@@ -26,14 +33,295 @@ export class OrdersBoardComponent implements OnInit {
   // shipday export controls (unchanged)
   exportShop = 'cropndtop.myshopify.com';
   exportDate = new Date().toISOString().slice(0, 10);
+  printStoreName = 'cropndtop';
   private has(o: Order, t: string) { return o.tags.map(x => x.toLowerCase()).includes(t.toLowerCase()); }
   private isComplete(o: Order) { return this.has(o, 'complete'); }
 
-  constructor(private ordersSvc: OrdersService, private exportSvc: ExportService) { }
-  // get filteredOrders(): (Order & { items?: any[] })[] {
-  //   if (this.activeTab === 'complete') return this.orders.filter(o => this.isComplete(o));
-  //   return this.orders.filter(o => !this.isComplete(o));
-  // }
+  constructor(private ordersSvc: OrdersService, private exportSvc: ExportService) { 
+    
+  }
+  printCards() {
+    // collect rows: flatten dateCards order entries
+    const rows: Array<{ store: string, orderName: string, customer: string, city: string, dateLabel: string, note?: string }> = [];
+    for (const day of this.dateCards) {
+      for (const o of (day.orders || [])) {
+        rows.push({
+          store: this.printStoreName,
+          orderName: o.orderName || `#${o.orderId}`,
+          customer: o.shipTo?.name || '',
+          city: o.shipTo?.city || '',
+          dateLabel: day.dateLabel,                // human-friendly date label (Mon, 01/01/2025)
+          note: (o.noteLocal || '')                // local note entered in date modal
+        });
+      }
+    }
+  
+    if (!rows.length) {
+      alert('No dated orders to print.');
+      return;
+    }
+  
+    // build simple printable HTML
+    const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+    if (!win) { alert('Popup blocked. Allow popups to print.'); return; }
+  
+    const style = `
+      <style>
+        body{font-family:Segoe UI,system-ui,sans-serif;padding:16px;color:#111}
+        h1{font-size:18px;margin:0 0 12px 0}
+        table{width:100%;border-collapse:collapse}
+        th,td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
+        th{background:#f5f5f5}
+        .note{white-space:pre-wrap;font-size:0.95rem;color:#333}
+        .small{font-size:0.85rem;color:#555}
+        @media print { body{padding:8px} }
+      </style>
+    `;
+  
+    const head = `<h1>Delivery cards — ${this.printStoreName}</h1><p class="small">Printed: ${new Date().toLocaleString()}</p>`;
+    const tableHead = `<table><thead><tr><th>Order</th><th>Customer</th><th>City</th><th>Deliver Date</th><th>Note (local)</th></tr></thead><tbody>`;
+    const tableRows = rows.map(r => `
+      <tr>
+        <td><strong>${this.escapeHtml(r.orderName)}</strong><div class="small">${this.escapeHtml(r.store)}</div></td>
+        <td>${this.escapeHtml(r.customer)}</td>
+        <td>${this.escapeHtml(r.city)}</td>
+        <td>${this.escapeHtml(r.dateLabel)}</td>
+        <td class="note">${this.escapeHtml(r.note || '')}</td>
+      </tr>
+    `).join('');
+    const tableFooter = `</tbody></table>`;
+  
+    win.document.write(`<html><head><title>Print delivery cards</title>${style}</head><body>${head}${tableHead}${tableRows}${tableFooter}</body></html>`);
+    win.document.close();
+  
+    // small helper to wait a tick before printing
+    setTimeout(() => {
+      win.focus();
+      win.print();
+      // optionally close window after printing:
+      // setTimeout(()=>win.close(), 500);
+    }, 300);
+  }
+  
+  private escapeHtml(s: string) {
+    return (s || '').toString()
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+// ── helpers: weekdays ────────────────────────────────────────────────────────
+private isWeekend(d: Date) {
+  const day = d.getDay(); // 0 Sun .. 6 Sat
+  return day === 0 || day === 6;
+}
+private nextBusinessDay(d: Date): Date {
+  const x = new Date(d);
+  while (this.isWeekend(x)) x.setDate(x.getDate() + 1);
+  return x;
+}
+private addBusinessDays(d: Date, n: number): Date {
+  const x = new Date(d);
+  let added = 0;
+  while (added < n) {
+    x.setDate(x.getDate() + 1);
+    if (!this.isWeekend(x)) added++;
+  }
+  return x;
+}
+
+// keep your UTC-safe label
+private dateLabelFromISO(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.toLocaleDateString(undefined, {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'
+  });
+}
+private ymd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+private fromYMD(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// ── business rules: auto date when missing ───────────────────────────────────
+public isOutsideLebanon(o: Order): boolean {
+  const c = (o.shipTo?.country || '').trim().toLowerCase();
+  return !!c && c !== 'lebanon';
+}
+
+
+private deliverDateFor(o: Order): string | null {
+  // if explicitly set, use it as-is
+  if (o.deliverBy) return o.deliverBy;
+
+  // only auto-place for pending/processing
+  const s = this.statusOf(o);
+  if (s !== 'pending' && s !== 'processing') return null;
+
+  const created = (o.createdAt instanceof Date && !isNaN(o.createdAt as any))
+    ? o.createdAt as Date
+    : (o.updatedAt || new Date());
+
+  if (this.isExpress(o)) {
+    // 2 business days after created
+    const d = this.addBusinessDays(created, 2);
+    return this.ymd(d);
+  }
+  if (this.isOutsideLebanon(o)) {
+    // next business day
+    const d = this.addBusinessDays(created, 1);
+    return this.ymd(d);
+  }
+
+  return null; // otherwise leave un-dated
+}
+// earliest start = earliest (explicit OR auto) date, then snap to weekday
+private startDayForCards(): Date {
+  const dates: string[] = [];
+
+  for (const o of (this.orders || [])) {
+    const s = this.statusOf(o);
+    if (s !== 'pending' && s !== 'processing') continue;
+    const d = this.deliverDateFor(o);
+    if (d) dates.push(d);
+  }
+
+  if (dates.length) {
+    dates.sort(); // ISO asc
+    return this.nextBusinessDay(this.fromYMD(dates[0]));
+  }
+
+  const today = this.nextBusinessDay(new Date(new Date().setHours(0,0,0,0)));
+  return today;
+}
+
+// ── dateCards: 20 *weekdays* continuous; includes auto-dated orders ─────────
+get dateCards(): { dateISO: string; dateLabel: string; orders: (Order & { isExpress: boolean })[] }[] {
+  // index orders by final “display date”
+  const byDay = new Map<string, (Order & { isExpress: boolean })[]>();
+
+  for (const o of (this.orders || [])) {
+    const s = this.statusOf(o);
+    if (s !== 'pending' && s !== 'processing') continue;
+
+    const key = this.deliverDateFor(o); // explicit or auto per rules
+    if (!key) continue;
+
+    const arr = byDay.get(key) ?? [];
+    arr.push({ ...(o as any), isExpress: this.isExpress(o) });
+    byDay.set(key, arr);
+  }
+
+  const out: { dateISO: string; dateLabel: string; orders: (Order & { isExpress: boolean })[] }[] = [];
+  let d = this.startDayForCards();
+
+  while (out.length < this.listCardMax) {
+    if (!this.isWeekend(d)) {
+      const iso = this.ymd(d);
+      const orders = (byDay.get(iso) || []).sort((a, b) =>
+        (a.orderName || a.orderId).localeCompare(b.orderName || b.orderId)
+      );
+      out.push({ dateISO: iso, dateLabel: this.dateLabelFromISO(iso), orders });
+    }
+    d = new Date(d); d.setDate(d.getDate() + 1); // advance calendar one day; weekend days will be skipped
+  }
+
+  return out;
+}
+
+get last3OpenOrders(): Order[] {
+  const open = (this.orders || []).filter(o => {
+    const s = this.statusOf(o);
+    return s !== 'shipped' && s !== 'complete' && s !== 'cancel';
+  });
+  open.sort((a,b) => (a.createdAt?.getTime() ?? a.updatedAt?.getTime() ?? 0)
+                   - (b.createdAt?.getTime() ?? b.updatedAt?.getTime() ?? 0)); // oldest first
+  return open.slice(0,3);
+}
+
+
+
+
+  private beirutNowFrom(d: Date): Date {
+    // your browser is already Asia/Beirut; if you want to be explicit you can keep as-is.
+    return d; 
+  }
+  private autoDeliverByForExpress(o: Order): string {
+    const created = o.createdAt instanceof Date ? o.createdAt : new Date(o.createdAt as any);
+    const local = this.beirutNowFrom(created);
+    const hr = local.getHours();
+    const base = new Date(local);
+    base.setDate(base.getDate() + (hr < 12 ? 1 : 2));
+    return base.toISOString().slice(0,10); // YYYY-MM-DD
+  }
+  
+  canEditDate(o: Order) {
+    const s = this.statusOf(o);
+    return s === 'pending' || s === 'processing';
+  }
+  
+  openDateModal(o: Order) {
+    if (!this.canEditDate(o)) return;
+    this.dateModalOrder = o;
+  
+    let initial: string | null = o.deliverBy ?? null;
+    if (!initial && this.isExpress(o)) {
+      initial = this.autoDeliverByForExpress(o);
+    }
+    this.initialDeliverBy = initial;
+    this.initialNote = o.noteLocal ?? null;
+    this.showDateModal = true;
+  }
+  
+  // update signature: saveDateModal(payload)
+  saveDateModal(payload: { date: string | null, note: string | null }) {
+    const o = this.dateModalOrder;
+    if (!o) return;
+  
+    const prevDate = o.deliverBy ?? null;
+    const prevNote = o.noteLocal ?? null;
+  
+    // optimistic UI
+    o.deliverBy = payload.date ?? null;
+    o.noteLocal = payload.note ?? null;
+  
+    // persist both: first deliverBy (existing endpoint) then note
+    this.ordersSvc.setDeliverBy(o.shopDomain, o.orderId, o.deliverBy).subscribe({
+      next: r => {
+        if (!r?.ok) {
+          o.deliverBy = prevDate;
+        }
+        // now persist note
+        this.ordersSvc.setNoteLocal(o.shopDomain, o.orderId, o.noteLocal).subscribe({
+          next: res => { if (!res?.ok) o.noteLocal = prevNote; },
+          error: () => { o.noteLocal = prevNote; }
+        });
+      },
+      error: () => {
+        o.deliverBy = prevDate;
+        // still try to persist note fallback if desired
+        this.ordersSvc.setNoteLocal(o.shopDomain, o.orderId, o.noteLocal).subscribe({ error: ()=>{} });
+      }
+    });
+  
+    this.closeDateModal();
+  }
+closeDateModal() {
+  this.showDateModal = false;
+  setTimeout(() => {
+    this.dateModalOrder = null;
+    this.initialDeliverBy = null; // cleanup
+  }, 0);
+}
+  
+
+  
   // ---- Canonical status per order ----
   statusOf(o: Order): 'pending' | 'processing' | 'shipped' | 'complete' | 'cancel' {
     // priority by business flow
@@ -312,4 +600,5 @@ get totalsCurrency(): string | undefined {
       }
     }, 50);
   }
+  
 }

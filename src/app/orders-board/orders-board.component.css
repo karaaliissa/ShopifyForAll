@@ -288,3 +288,97 @@ tr:hover { background: #f9fafb; }
 .pill.express:hover {
   filter: brightness(0.95);
 }
+/* List cards layout */
+.list-wrap { padding: 16px; }
+.list-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+
+.list-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.date-card {
+  border: 2px solid #111;         /* bold like your sketch */
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+  min-height: 140px;
+}
+
+.date-card__header {
+  margin-bottom: 8px;
+}
+.date-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.order-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin: 6px 0;
+  background: #fafafa;
+  font-size: 0.9rem;
+}
+.order-chip.is-express {
+  border-color: #fecaca;
+  background: #fff5f5;
+}
+
+.order-chip .order-id { font-weight: 600; }
+
+.badge-express {
+  padding: 2px 6px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: #dc2626;   /* red */
+  color: #fff;
+  line-height: 1;
+}
+
+.link.small {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+@media (max-width: 1100px) {
+  .list-grid { grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+}
+@media (max-width: 800px) {
+  .list-grid { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+}
+@media (max-width: 520px) {
+  .list-grid { grid-template-columns: 1fr; }
+}
+.last-three {
+  display: flex; align-items: center; gap: 10px;
+  margin: 8px 0 12px 0; padding: 8px 10px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+}
+.last-three .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.last-three .chip {
+  padding: 2px 8px; border-radius: 999px;
+  background: #fff; border: 1px solid #e5e7eb; font-size: 12px;
+}
+.order-chip { border:1px solid #e5e7eb; background:#fafafa; }
+
+/* Express = red */
+.order-chip.is-express {
+  border-color:#fecaca;
+  background:#fff5f5;
+}
+
+/* Outside Lebanon = yellow (only when not express) */
+.order-chip.is-outside{
+  border-color:#fde68a;     /* amber-200 */
+  background:#fffbeb;       /* amber-50  */
+}

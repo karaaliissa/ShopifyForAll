@@ -8,30 +8,34 @@
       <p *ngIf="loading">Loading orders…</p>
       <p *ngIf="error" class="error">{{ error }}</p>
     </div>
+    <button class="btn" (click)="printCards()">Print cards</button>
     <button class="btn primary" (click)="fetch()" [disabled]="loading">
       {{ loading ? 'Loading…' : 'Fetch orders' }}
     </button>
   </div>
-  
-<!-- Status counters (existing) -->
 
-<!-- NEW: Status counters -->
-<div class="status-bar">
-  <button class="btn stat pill pending" style="background-color: violet ; color: black">Pending {{ pendingCount }}</button>
-  <button class="btn stat pill processing" style="background-color: cornflowerblue ; color: black">Processing {{ processingCount }}</button>
-  <button class="btn stat pill shipped" style="background-color: gold ; color: black">Shipped {{ shippedCount }}</button>
-  <button class="btn btn success stat pill complete" style="color: black;">Complete {{ completeCount }}</button>
-  <button class="btn btn link stat pill cancel" style="color: black;">Canceled {{ cancelCount }}</button>
-</div>
+  <!-- Status counters (existing) -->
 
-<!-- NEW: Express counters (red buttons) -->
-<div class="status-bar express-bar">
-  <button class="btn pill express">Express Pending {{ expressPendingCount }}</button>
-  <button class="btn pill express">Express Processing {{ expressProcessingCount }}</button>
-  <button class="btn pill express">Express Shipped {{ expressShippedCount }}</button>
-  <button class="btn pill express">Express Complete {{ expressCompleteCount }}</button>
-  <button class="btn pill express">Express Canceled {{ expressCancelCount }}</button>
-</div>
+  <!-- NEW: Status counters -->
+  <div class="status-bar">
+    <button class="btn stat pill pending" style="background-color: violet ; color: black">Pending {{ pendingCount
+      }}</button>
+    <button class="btn stat pill processing" style="background-color: cornflowerblue ; color: black">Processing {{
+      processingCount }}</button>
+    <button class="btn stat pill shipped" style="background-color: gold ; color: black">Shipped {{ shippedCount
+      }}</button>
+    <button class="btn btn success stat pill complete" style="color: black;">Complete {{ completeCount }}</button>
+    <button class="btn btn link stat pill cancel" style="color: black;">Canceled {{ cancelCount }}</button>
+  </div>
+
+  <!-- NEW: Express counters (red buttons) -->
+  <div class="status-bar express-bar">
+    <button class="btn pill express">Express Pending {{ expressPendingCount }}</button>
+    <button class="btn pill express">Express Processing {{ expressProcessingCount }}</button>
+    <button class="btn pill express">Express Shipped {{ expressShippedCount }}</button>
+    <button class="btn pill express">Express Complete {{ expressCompleteCount }}</button>
+    <button class="btn pill express">Express Canceled {{ expressCancelCount }}</button>
+  </div>
 
 
   <!-- Filters -->
@@ -86,57 +90,103 @@
       <button class="btn danger">Archive</button>
     </div>
   </div> -->
-<!-- List tab placeholder (HTML only) -->
-<div *ngIf="activeTab==='list'" class="card table-wrapper" style="padding:16px;">
-  <b>List</b> — (Coming next: same area will show Picking List / Packing Slips style table)
-</div>
-<br>
-<br>
- <!-- NEW: Main tabs (HTML-only) -->
- <div class="tabs tabs--main">
-  <button class="btn tab" [class.active]="activeTab==='orders'" (click)="activeTab='orders'">Orders</button>
-  <button class="btn tab" [class.active]="activeTab==='list'" (click)="activeTab='list'">List</button>
-</div>
- <!-- Orders Table -->
- <div *ngIf="activeTab==='orders'" class="card table-wrapper" [hidden]="loading || !orders?.length">
-  <table>
-    <thead>
-      <tr>
-        <th>Order</th>
-        <th>Tags</th>
-        <th>Products</th>
-        <th>Shipping Info</th>
-        <th>Method / Notes</th>
-        <th>Total</th>
-        <th>Code Used</th>
-        <th>Source</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
+  <!-- List tab placeholder (HTML only) -->
+  <!-- List Tab -->
+  <!-- List Tab (cards view) -->
+  <div class="list-toolbar">
+    <b>List (Pending + Processing with a date)</b>
+    <span class="muted">Showing {{ listCardMax }} weekdays (Mon–Fri)</span>
+  </div>
 
-    <tbody>
-      <tr *ngFor="let o of orders">
-        <!-- Order -->
-        <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
-          <div class="order-id">
-            <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }" (click)="openPrintModal(o)">
-              {{ o.orderName || o.orderId }}
+  <!-- Last 3 open orders panel -->
+  <div class="last-three" *ngIf="last3OpenOrders.length">
+    <b>Last 3 open orders</b>
+    <div class="chips">
+      <span class="chip" *ngFor="let o of last3OpenOrders">
+        {{ o.orderName || o.orderId }}
+        <small class="muted">· {{ fulfillmentLabel(o) }}</small>
+      </span>
+    </div>
+  </div>
+  <div *ngIf="activeTab==='list'" class="list-wrap">
+    <div class="list-toolbar">
+      <b>List (Pending + Processing with a date)</b>
+      <span class="muted">Showing up to {{ listCardMax }} non-empty days</span>
+    </div>
+
+    <div class="list-grid">
+      <div class="date-card" *ngFor="let day of dateCards">
+        <div class="date-card__header">
+          <div class="date-title">{{ day.dateLabel }}</div>
+        </div>
+
+        <div class="order-chip" *ngFor="let o of day.orders" [class.is-express]="o.isExpress"
+          [class.is-outside]="!o.isExpress && isOutsideLebanon(o)">
+          <span class="order-id">{{ o.orderName || o.orderId }}</span>
+          <span class="muted">
+            — {{ o.shipTo?.name || '—' }}
+            <ng-container *ngIf="o.shipTo?.city"> ({{ o.shipTo?.city }})</ng-container>
+          </span>
+          <span class="badge-express" *ngIf="o.isExpress">Express</span>
+          <button class="link small" (click)="openDateModal(o)" *ngIf="canEditDate(o)">edit</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div *ngIf="dateCards.length===0" class="empty">
+      No dated orders yet.
+    </div>
+  </div>
+
+
+  <br>
+  <br>
+  <!-- NEW: Main tabs (HTML-only) -->
+  <div class="tabs tabs--main">
+    <button class="btn tab" [class.active]="activeTab==='orders'" (click)="activeTab='orders'">Orders</button>
+    <button class="btn tab" [class.active]="activeTab==='list'" (click)="activeTab='list'">List</button>
+  </div>
+  <!-- Orders Table -->
+  <div *ngIf="activeTab==='orders'" class="card table-wrapper" [hidden]="loading || !orders">
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Tags</th>
+          <th>Products</th>
+          <th>Shipping Info</th>
+          <th>Method / Notes</th>
+          <th>Total</th>
+          <th>Code Used</th>
+          <th>Source</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let o of orders">
+          <!-- Order -->
+          <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+            <div class="order-id">
+              <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }" (click)="openPrintModal(o)">
+                {{ o.orderName || o.orderId }}
+              </div>
+              <div class="customer">{{ o.shipTo?.name }}</div>
+              <div class="date">{{ o.createdAt | date:'medium' }}</div>
+              <div class="badges">
+                <!-- single canonical status pill -->
+                <span class="badge" [ngClass]="fulfillmentClass(o)">{{ fulfillmentLabel(o) }}</span>
+
+                <!-- financial status pill unchanged -->
+                <span class="badge" [ngClass]="(o.financialStatus||'').toLowerCase()">
+                  {{ o.financialStatus }}
+                </span>
+              </div>
+
+
             </div>
-            <div class="customer">{{ o.shipTo?.name }}</div>
-            <div class="date">{{ o.createdAt | date:'medium' }}</div>
-            <div class="badges">
-              <!-- single canonical status pill -->
-              <span class="badge" [ngClass]="fulfillmentClass(o)">{{ fulfillmentLabel(o) }}</span>
-            
-              <!-- financial status pill unchanged -->
-              <span class="badge" [ngClass]="(o.financialStatus||'').toLowerCase()">
-                {{ o.financialStatus }}
-              </span>
-            </div>
-            
-            
-          </div>
-        </td>
+          </td>
 
           <!-- Tags -->
           <!-- <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
@@ -263,6 +313,7 @@
           <td class="num">
             <button class="btn primary" (click)="onPrintAndProcess(o)">🖨 Print</button>
           </td>
+          <button class="btn" *ngIf="canEditDate(o)" (click)="openDateModal(o)">📅 Set date</button>
         </tr>
       </tbody>
     </table>
@@ -272,6 +323,15 @@
     No orders yet.
   </div>
   <!-- mount only when needed + listen for close -->
+  <app-delivery-date-modal
+  *ngIf="showDateModal"
+  [show]="showDateModal"
+  [order]="dateModalOrder"
+  [initialDate]="initialDeliverBy"
+  [initialNote]="initialNote"
+  (close)="closeDateModal()"
+  (save)="saveDateModal($event)">
+</app-delivery-date-modal>
   <app-print-modal *ngIf="showPrint" [order]="selectedOrder" [show]="showPrint" (closed)="onModalClosed()">
   </app-print-modal>
 

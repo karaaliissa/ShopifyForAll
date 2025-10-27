@@ -1,0 +1,10 @@
+/* delivery-date-modal.component.css */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:900}
+.modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:16px;min-width:320px;z-index:1000;box-shadow:0 10px 30px rgba(0,0,0,.2);font-family:Segoe UI,system-ui,sans-serif}
+h3{margin:0 0 8px 0}
+.muted{color:#6b7280}
+.row{display:flex;gap:10px;align-items:center;margin:.5rem 0}
+.row span{min-width:60px;color:#475569}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.btn{padding:.5rem 1rem;border:1px solid #d1d5db;border-radius:8px;background:#fff}
+.btn.primary{background:#111827;color:#fff;border:none}

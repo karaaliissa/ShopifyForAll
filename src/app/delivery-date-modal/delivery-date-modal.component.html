@@ -1,0 +1,23 @@
+<div class="backdrop" *ngIf="show" (click)="onClose()"></div>
+<div class="modal" *ngIf="show">
+  <h3>Set deliver-by date</h3>
+  <p style="margin:.25rem 0 .75rem 0;">
+    Order: <b>{{ order?.orderName || order?.orderId }}</b>
+    <span *ngIf="order?.shippingMethod" class="muted"> ({{ order.shippingMethod }})</span>
+  </p>
+
+  <label class="row">
+    <span>Date</span>
+    <input type="date" [(ngModel)]="value">
+  </label>
+
+  <label class="row" style="flex-direction:column;align-items:flex-start;">
+    <span style="min-width:auto">Note (local)</span>
+    <textarea rows="3" style="width:100%;padding:8px;border:1px solid #e5e7eb;border-radius:6px;" [(ngModel)]="noteValue" placeholder="Exchange / deadline / brief note..."></textarea>
+  </label>
+
+  <div class="actions">
+    <button class="btn" (click)="onClose()">Cancel</button>
+    <button class="btn primary" (click)="onSave()">Save</button>
+  </div>
+</div>

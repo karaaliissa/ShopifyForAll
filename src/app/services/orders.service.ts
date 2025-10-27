@@ -47,6 +47,8 @@ export interface SheetOrderRow {
   NOTE_ATTRIBUTES?: string; 
   SOURCE_NAME?: string;
   DISCOUNT_CODES?: string;
+  DELIVER_BY?: string;
+  NOTE_LOCAL?: string;
 }
 
 export interface OrdersApiResponse { ok: boolean; items: SheetOrderRow[]; }
@@ -76,6 +78,9 @@ export interface Order {
   noteAttributes?: { name: string; value: any }[];
   sourceName?: string;
   discountCodes?: string[];
+
+  deliverBy?: string | null;
+  noteLocal?: string | null;
 }
 
 export interface GetOrdersOptions {
@@ -138,7 +143,11 @@ const adaptRow = (x: SheetOrderRow): Order => ({
   noteAttributes: parseJson<{name:string; value:any}[]>(x.NOTE_ATTRIBUTES) || [],
   sourceName: x.SOURCE_NAME,
   discountCodes: splitTags(x.DISCOUNT_CODES),
+  deliverBy: x.DELIVER_BY ? x.DELIVER_BY.slice(0, 10) : null,
+  noteLocal: (x.NOTE_LOCAL || '').toString().trim() || null
+  
 });
+
 export interface GetOrdersOptions {
   shop?: string;
   status?: FulfillmentStatus | string;
@@ -171,6 +180,34 @@ export class OrdersService {
   //     map(rows => this.clientFilter(rows, opts))
   //   );
   // }
+  setDeliverBy(shopDomain: string, orderId: string | number, deliverBy: string | null) {
+    const url = `${this.base}/api/orders/deliver-by`;
+  
+    // form POST => "simple request" => avoids CORS preflight
+    const body = new URLSearchParams({
+      shop: shopDomain,
+      orderId: String(orderId),
+      // send empty string for null; backend already treats "" as null-ish
+      deliverBy: deliverBy ?? ''
+    }).toString();
+  
+    return this.http.post<{ ok: boolean }>(
+      url,
+      body,
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+  }
+  setNoteLocal(shopDomain: string, orderId: string | number, noteLocal: string | null) {
+    const url = `${this.base}/api/orders/note-local`;
+    const body = new URLSearchParams({
+      shop: shopDomain,
+      orderId: String(orderId),
+      noteLocal: noteLocal ?? ''
+    }).toString();
+  
+    return this.http.post<{ ok:boolean }>(url, body, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+  }
+  
   getOrders(opts?: GetOrdersOptions): Observable<Order[]> {
     let params = new HttpParams();
     if (opts?.shop)   params = params.set('shop', opts.shop);
