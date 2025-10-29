@@ -76,7 +76,7 @@ export class PrintModalComponent {
   //     'crepe half lycra': { ar: 'كريب نصف لايكرا', hex: '#000000' },
   //     'leather': { ar: 'جلد', hex: '#000000' },
   //     'satin': { ar: 'ساتان', hex: '#000000' },
-  //     'stretchy material': { ar: 'مادة مرنة', hex: '#000000' },
+  //     'stretchy material': { ar: 'جورسيه', hex: '#000000' },
   //     'crepe without lycra': { ar: 'كريب بدون لايكرا', hex: '#000000' },
   //   };
 
@@ -113,7 +113,7 @@ private applyPrintColorArabic(html: string): string {
   const colors: Record<string, { ar: string; hex: string }> = {
     'black - crystal': { ar: 'أسود - كريستال', hex: '#000000' },
     'black - black': { ar: 'أسود - أسود', hex: '#000000' },
-    'slate blue grey': { ar: 'مادي جديد', hex: '#708090' },
+    'slate blue grey': { ar: 'رمادي جديد', hex: '#708090' },
     'electric blue': { ar: 'أزرق', hex: '#007FFF' },
     'dusty blue': { ar: 'أزرق', hex: '#7AA5C3' },
     'baby blue': { ar: 'أزرق فاتح', hex: '#A3C7F3' },
