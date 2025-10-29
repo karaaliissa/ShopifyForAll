@@ -19,80 +19,155 @@ export class PrintModalComponent {
   @ViewChild('printArea') printArea!: ElementRef<HTMLDivElement>;
 
   /** Replace color tokens with "English / العربية" and tint them – PRINT ONLY (packing) */
-  private applyPrintColorArabic(html: string): string {
-    const keywords: Record<string, { ar: string; hex: string }> = {
-      'black - crystal': { ar: 'أسود - كريستال', hex: '#000000' },
-      'black - black': { ar: 'أسود - أسود', hex: '#000000' },
+  // private applyPrintColorArabic(html: string): string {
+  //   const keywords: Record<string, { ar: string; hex: string }> = {
+  //     'black - crystal': { ar: 'أسود - كريستال', hex: '#000000' },
+  //     'black - black': { ar: 'أسود - أسود', hex: '#000000' },
 
-      'slate blue grey': { ar: 'مادي جديد', hex: '#708090' },
-      'electric blue': { ar: 'أزرق', hex: '#007FFF' },
-      'dusty blue': { ar: 'أزرق', hex: '#7AA5C3' },
-      'baby blue': { ar: 'أزرق فاتح', hex: '#A3C7F3' },
-      'navy blue': { ar: 'كحلي', hex: '#0A3D62' },
-      'royal blue': { ar: 'نيلي', hex: '#4169E1' },
+  //     'slate blue grey': { ar: 'مادي جديد', hex: '#708090' },
+  //     'electric blue': { ar: 'أزرق', hex: '#007FFF' },
+  //     'dusty blue': { ar: 'أزرق', hex: '#7AA5C3' },
+  //     'baby blue': { ar: 'أزرق فاتح', hex: '#A3C7F3' },
+  //     'navy blue': { ar: 'كحلي', hex: '#0A3D62' },
+  //     'royal blue': { ar: 'نيلي', hex: '#4169E1' },
 
-      'hot pink': { ar: 'زهري', hex: '#FF69B4' },
-      'baby pink': { ar: 'زهري فاتح', hex: '#F8BBD0' },
-      'pastel pink': { ar: 'زهري', hex: '#FFD1DC' },
-      'pink': { ar: 'زهري', hex: '#FFC0CB' },
+  //     'hot pink': { ar: 'زهري', hex: '#FF69B4' },
+  //     'baby pink': { ar: 'زهري فاتح', hex: '#F8BBD0' },
+  //     'pastel pink': { ar: 'زهري', hex: '#FFD1DC' },
+  //     'pink': { ar: 'زهري', hex: '#FFC0CB' },
 
-      'cherry red': { ar: 'بوردو فاتح', hex: '#D2042D' },
-      'red': { ar: 'أحمر', hex: '#FF0000' },
-      'burgundy': { ar: 'بوردو غامق', hex: '#800020' },
-      'brick': { ar: 'بريك', hex: '#B55239' },
+  //     'cherry red': { ar: 'بوردو فاتح', hex: '#D2042D' },
+  //     'red': { ar: 'أحمر', hex: '#FF0000' },
+  //     'burgundy': { ar: 'بوردو غامق', hex: '#800020' },
+  //     'brick': { ar: 'بريك', hex: '#B55239' },
 
-      'dark green': { ar: 'أخضرغامق', hex: '#006400' },
-      'sage green': { ar: 'أخضر', hex: '#9CAF88' },
-      'mint': { ar: 'مينت', hex: '#98FF98' },
-      'green': { ar: 'أخضر', hex: '#008000' },
+  //     'dark green': { ar: 'أخضرغامق', hex: '#006400' },
+  //     'sage green': { ar: 'أخضر', hex: '#9CAF88' },
+  //     'mint': { ar: 'مينت', hex: '#98FF98' },
+  //     'green': { ar: 'أخضر', hex: '#008000' },
 
-      'aqua': { ar: 'تركوازي', hex: '#00BCD4' },
-      'orange': { ar: 'أورنج', hex: '#FFA500' },
-      'yellow': { ar: 'أصفر', hex: '#FFD000' },
+  //     'aqua': { ar: 'تركوازي', hex: '#00BCD4' },
+  //     'orange': { ar: 'أورنج', hex: '#FFA500' },
+  //     'yellow': { ar: 'أصفر', hex: '#FFD000' },
 
-      'aubergine': { ar: 'اوبرجين', hex: '#580F41' },
-      'lilac': { ar: 'ليلكي', hex: '#C8A2C8' },
+  //     'aubergine': { ar: 'اوبرجين', hex: '#580F41' },
+  //     'lilac': { ar: 'ليلكي', hex: '#C8A2C8' },
 
-      'ivory': { ar: 'عاجي', hex: '#FFFFF0' },
-      'off white': { ar: 'أوف وايت', hex: '#F8F8F2' },
-      'white': { ar: 'أبيض', hex: '#000000' },
+  //     'ivory': { ar: 'عاجي', hex: '#FFFFF0' },
+  //     'off white': { ar: 'أوف وايت', hex: '#F8F8F2' },
+  //     'white': { ar: 'أبيض', hex: '#000000' },
 
-      'grey': { ar: 'رمادي', hex: '#808080' },
-      'gray': { ar: 'رمادي', hex: '#808080' },
+  //     'grey': { ar: 'رمادي', hex: '#808080' },
+  //     'gray': { ar: 'رمادي', hex: '#808080' },
 
-      'choco': { ar: 'شوكو', hex: '#5D3A1A' },
-      'brown': { ar: 'بني', hex: '#8B4513' },
-      'nude': { ar: 'بيج', hex: '#C8AD7F' },
-      'khaki': { ar: 'زيتي', hex: '#BDB76B' },
+  //     'choco': { ar: 'شوكو', hex: '#5D3A1A' },
+  //     'brown': { ar: 'بني', hex: '#8B4513' },
+  //     'nude': { ar: 'بيج', hex: '#C8AD7F' },
+  //     'khaki': { ar: 'زيتي', hex: '#BDB76B' },
 
-      'black': { ar: 'أسود', hex: '#000000' },
+  //     'black': { ar: 'أسود', hex: '#000000' },
 
-      'chala': { ar: 'شالا', hex: '#555555' },
+  //     'chala': { ar: 'شالا', hex: '#555555' },
 
-      // --- FABRICS (tinted text only, keep English token) ---
-      'cotton': { ar: 'قطن', hex: '#000000' },
-      'cotton lycra': { ar: 'قطن لايكرا', hex: '#000000' },
-      'poplin': { ar: 'بوبلين', hex: '#000000' },
-      'crepe half lycra': { ar: 'كريب نصف لايكرا', hex: '#000000' },
-      'leather': { ar: 'جلد', hex: '#000000' },
-      'satin': { ar: 'ساتان', hex: '#000000' },
-      'stretchy material': { ar: 'مادة مرنة', hex: '#000000' },
-      'crepe without lycra': { ar: 'كريب بدون لايكرا', hex: '#000000' },
-    };
+  //     // --- FABRICS (tinted text only, keep English token) ---
+  //     'cotton': { ar: 'قطن', hex: '#000000' },
+  //     'cotton lycra': { ar: 'قطن لايكرا', hex: '#000000' },
+  //     'poplin': { ar: 'بوبلين', hex: '#000000' },
+  //     'crepe half lycra': { ar: 'كريب نصف لايكرا', hex: '#000000' },
+  //     'leather': { ar: 'جلد', hex: '#000000' },
+  //     'satin': { ar: 'ساتان', hex: '#000000' },
+  //     'stretchy material': { ar: 'مادة مرنة', hex: '#000000' },
+  //     'crepe without lycra': { ar: 'كريب بدون لايكرا', hex: '#000000' },
+  //   };
 
-    const keys = Object.keys(keywords).sort((a, b) => b.length - a.length);
-    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  //   const keys = Object.keys(keywords).sort((a, b) => b.length - a.length);
+  //   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    let out = html;
-    for (const key of keys) {
-      const { ar, hex } = keywords[key];
-      const rx = new RegExp(`(?<![\\w/])${esc(key)}(?![\\w/])`, 'gi');
-      out = out.replace(rx, (match) =>
-        `<span class="color-ar" style="color:${hex}; font-weight:inherit;">${match} / ${ar}</span>`
-      );
-    }
-    return out;
+  //   let out = html;
+  //   for (const key of keys) {
+  //     const { ar, hex } = keywords[key];
+  //     const rx = new RegExp(`(?<![\\w/])${esc(key)}(?![\\w/])`, 'gi');
+  //     out = out.replace(rx, (match) =>
+  //       `<span class="color-ar" style="color:${hex}; font-weight:inherit;">${match} / ${ar}</span>`
+  //     );
+  //   }
+  //   return out;
+  // }
+/** Replace only fabric/material tokens with Arabic (remove the English fabric text).
+ *  Colors remain in English (unchanged). Used only for packing print.
+ */
+private applyPrintColorArabic(html: string): string {
+  // Fabrics: only these will be replaced by their Arabic equivalent (English removed).
+  const fabrics: Record<string, { ar: string; hex: string }> = {
+    'cotton': { ar: 'قطن', hex: '#000000' },
+    'cotton lycra': { ar: 'قطن لايكرا', hex: '#000000' },
+    'poplin': { ar: 'بوبلين', hex: '#000000' },
+    'crepe half lycra': { ar: 'كريب نصف لايكرا', hex: '#000000' },
+    'leather': { ar: 'جلد', hex: '#000000' },
+    'satin': { ar: 'ساتان', hex: '#000000' },
+    'stretchy material': { ar: 'جورسيه', hex: '#000000' },
+    'crepe without lycra': { ar: 'كريب بدون لايكرا', hex: '#000000' },
+  };
+
+  // Colors map (kept here for reference/tinting if needed later) — we will NOT replace these.
+  const colors: Record<string, { ar: string; hex: string }> = {
+    'black - crystal': { ar: 'أسود - كريستال', hex: '#000000' },
+    'black - black': { ar: 'أسود - أسود', hex: '#000000' },
+    'slate blue grey': { ar: 'مادي جديد', hex: '#708090' },
+    'electric blue': { ar: 'أزرق', hex: '#007FFF' },
+    'dusty blue': { ar: 'أزرق', hex: '#7AA5C3' },
+    'baby blue': { ar: 'أزرق فاتح', hex: '#A3C7F3' },
+    'navy blue': { ar: 'كحلي', hex: '#0A3D62' },
+    'royal blue': { ar: 'نيلي', hex: '#4169E1' },
+    'hot pink': { ar: 'زهري', hex: '#FF69B4' },
+    'baby pink': { ar: 'زهري فاتح', hex: '#F8BBD0' },
+    'pastel pink': { ar: 'زهري', hex: '#FFD1DC' },
+    'pink': { ar: 'زهري', hex: '#FFC0CB' },
+    'cherry red': { ar: 'بوردو فاتح', hex: '#D2042D' },
+    'red': { ar: 'أحمر', hex: '#FF0000' },
+    'burgundy': { ar: 'بوردو غامق', hex: '#800020' },
+    'brick': { ar: 'بريك', hex: '#B55239' },
+    'dark green': { ar: 'أخضرغامق', hex: '#006400' },
+    'sage green': { ar: 'أخضر', hex: '#9CAF88' },
+    'mint': { ar: 'مينت', hex: '#98FF98' },
+    'green': { ar: 'أخضر', hex: '#008000' },
+    'aqua': { ar: 'تركوازي', hex: '#00BCD4' },
+    'orange': { ar: 'أورنج', hex: '#FFA500' },
+    'yellow': { ar: 'أصفر', hex: '#FFD000' },
+    'aubergine': { ar: 'اوبرجين', hex: '#580F41' },
+    'lilac': { ar: 'ليلكي', hex: '#C8A2C8' },
+    'ivory': { ar: 'عاجي', hex: '#FFFFF0' },
+    'off white': { ar: 'أوف وايت', hex: '#F8F8F2' },
+    'white': { ar: 'أبيض', hex: '#000000' },
+    'grey': { ar: 'رمادي', hex: '#808080' },
+    'gray': { ar: 'رمادي', hex: '#808080' },
+    'choco': { ar: 'شوكو', hex: '#5D3A1A' },
+    'brown': { ar: 'بني', hex: '#8B4513' },
+    'nude': { ar: 'بيج', hex: '#C8AD7F' },
+    'khaki': { ar: 'زيتي', hex: '#BDB76B' },
+    'black': { ar: 'أسود', hex: '#000000' },
+    'chala': { ar: 'شالا', hex: '#555555' },
+  };
+
+  // We'll replace fabrics only. Sort by descending length to avoid partial matches.
+  const fabricKeys = Object.keys(fabrics).sort((a, b) => b.length - a.length);
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  let out = html;
+
+  // Replace fabric tokens with only Arabic text (no English). We preserve spacing and punctuation.
+  for (const key of fabricKeys) {
+    const { ar, hex } = fabrics[key];
+    const rx = new RegExp(`(?<![\\w/])${esc(key)}(?![\\w/])`, 'gi');
+    out = out.replace(rx, () => `<span class="fabric-ar" style="color:${hex}; font-weight:inherit">${ar}</span>`);
   }
+
+  // NOTE: we intentionally do NOT replace color tokens here, so English color names remain visible.
+  // If you later want to tint color tokens (but keep English), you could wrap matched color tokens
+  // similarly instead of replacing them.
+
+  return out;
+}
 
   variantWithSizeRing(v?: string): SafeHtml {
     if (!v) return '';
