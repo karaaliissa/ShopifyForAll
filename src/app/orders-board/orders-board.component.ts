@@ -1,11 +1,12 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Order, OrdersService } from '../services/orders.service';
+import { Order, OrdersService, OrdersSummary } from '../services/orders.service';
 import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ExportService } from '../services/export.service';
 import { PrintModalComponent } from '../print-modal/print-modal.component';
 import { DeliveryDateModalComponent } from '../delivery-date-modal/delivery-date-modal.component';
+type UIOrder = Order & { items?: any[] };
 
 @Component({
   selector: 'app-orders-board',
@@ -25,7 +26,9 @@ export class OrdersBoardComponent implements OnInit {
   initialDeliverBy: string | null = null;
   initialNote : string | null = null;
   listCardMax = 20; // show up to 20 non-empty day cards
-  orders: (Order & { items?: any[] })[] = [];
+  
+  orders: UIOrder[] = [];
+
   loading = false;
   error = '';
   selectedOrder: any = null;
@@ -34,6 +37,10 @@ export class OrdersBoardComponent implements OnInit {
   exportShop = 'cropndtop.myshopify.com';
   exportDate = new Date().toISOString().slice(0, 10);
   printStoreName = 'cropndtop';
+  summary: OrdersSummary | null = null;   // global counters
+  pageSize = 25;                          // page size
+  cursor: string | null = null;           // current cursor (request)
+  nextCursor: string | null = null;       // next page cursor (response)
   private has(o: Order, t: string) { return o.tags.map(x => x.toLowerCase()).includes(t.toLowerCase()); }
   private isComplete(o: Order) { return this.has(o, 'complete'); }
 
@@ -358,26 +365,18 @@ closeDateModal() {
   private statusIs(o: Order, s: ReturnType<OrdersBoardComponent['statusOf']>) {
     return this.statusOf(o) === s;
   }
-  get pendingCount()    { return this.orders.filter(o => this.statusOf(o) === 'pending').length; }
-  get processingCount() { return this.orders.filter(o => this.statusOf(o) === 'processing').length; }
-  get shippedCount()    { return this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
-  get completeCount()   { return this.orders.filter(o => this.statusOf(o) === 'complete').length; }
-  get cancelCount()     { return this.orders.filter(o => this.statusOf(o) === 'cancel').length; }
-  get expressPendingCount() {
-    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'pending')).length;
-  }
-  get expressProcessingCount() {
-    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'processing')).length;
-  }
-  get expressShippedCount() {
-    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'shipped')).length;
-  }
-  get expressCompleteCount() {
-    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'complete')).length;
-  }
-  get expressCancelCount() {
-    return this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'cancel')).length;
-  }
+  get pendingCount()    { return this.summary?.pending    ?? this.orders.filter(o => this.statusOf(o) === 'pending').length; }
+  get processingCount() { return this.summary?.processing ?? this.orders.filter(o => this.statusOf(o) === 'processing').length; }
+  get shippedCount()    { return this.summary?.shipped    ?? this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
+  get completeCount()   { return this.summary?.complete   ?? this.orders.filter(o => this.statusOf(o) === 'complete').length; }
+  get cancelCount()     { return this.summary?.cancel     ?? this.orders.filter(o => this.statusOf(o) === 'cancel').length; }
+
+  get expressPendingCount()    { return this.summary?.expressPending    ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'pending')).length; }
+  get expressProcessingCount() { return this.summary?.expressProcessing ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'processing')).length; }
+  get expressShippedCount()    { return this.summary?.expressShipped    ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'shipped')).length; }
+  get expressCompleteCount()   { return this.summary?.expressComplete   ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'complete')).length; }
+  get expressCancelCount()     { return this.summary?.expressCancel     ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'cancel')).length; }
+
   // Left badge label/class (use the same canonical status)
   fulfillmentLabel(o: Order): string {
     const m = this.statusOf(o);
@@ -457,28 +456,66 @@ get totalsCurrency(): string | undefined {
   // 🚫 No auto-load. Leave empty if you truly want manual fetch only.
   ngOnInit() { }
 
-  /** Manually fetch orders + their items */
-  fetch() {
-    this.loading = true;
-    this.error = '';
-    this.ordersSvc.getOrders({ limit: 100 /* no refresh param */ }).subscribe({
-      next: (rows) => {
-        this.orders = rows;
-        this.loading = false;
+  /** Manually fetch the first page (25) + global summary */
+/** Manually fetch the first page (25) + global summary */
+fetch() {
+  this.loading = true;
+  this.error = '';
+  this.cursor = null;           // start from page 1
+  this.nextCursor = null;
 
-        // fetch items for each order once per click (manual, no timers)
-        this.orders.forEach(o => {
-          this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
-            o.items = items || [];
-          });
+  // 1) global counters (not paginated)
+  this.ordersSvc.getSummary().subscribe({
+    next: (s) => { this.summary = s; },
+    error: () => { /* counters failing shouldn't block page */ }
+  });
+
+  // 2) first page
+  this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
+    next: (page) => {
+      // ensure UIOrder type by mapping
+      this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+      this.nextCursor = page.nextCursor ?? null;
+      this.loading = false;
+
+      // prefetch items (thumbs/prices) for visible rows
+      this.orders.forEach(o => {
+        this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
+          o.items = items || [];
         });
-      },
-      error: (err) => {
-        this.error = err?.message ?? 'Failed to load orders';
-        this.loading = false;
-      }
-    });
-  }
+      });
+    },
+    error: (err) => {
+      this.error = err?.message ?? 'Failed to load orders';
+      this.loading = false;
+    }
+  });
+}
+
+/** Load the next page (appends) */
+loadMore() {
+  if (!this.nextCursor) return;
+
+  this.loading = true;
+
+  this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.nextCursor }).subscribe({
+    next: (page) => {
+      const newRows = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+      this.orders = [...this.orders, ...newRows];   // append
+      this.nextCursor = page.nextCursor ?? null;
+      this.loading = false;
+
+      // prefetch items only for the newly added rows
+      newRows.forEach(o => {
+        this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
+          o.items = items || [];
+        });
+      });
+    },
+    error: () => { this.loading = false; }
+  });
+}
+
 
   /** Optional Shipday export (manual action) */
   exportShipday() {

@@ -382,3 +382,12 @@ tr:hover { background: #f9fafb; }
   border-color:#fde68a;     /* amber-200 */
   background:#fffbeb;       /* amber-50  */
 }
+.pagination {
+  text-align: center;
+  margin: 16px 0;
+}
+.loading-spinner {
+  text-align: center;
+  color: #555;
+  margin: 8px 0;
+}

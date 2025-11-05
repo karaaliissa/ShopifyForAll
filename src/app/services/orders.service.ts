@@ -5,6 +5,28 @@ import { map, Observable, of, shareReplay, catchError } from 'rxjs';
 export type FulfillmentStatus = 'unfulfilled' | 'partial' | 'fulfilled' | 'restocked' | 'cancelled' | '' ;
 export type FinancialStatus   = 'paid' | 'pending' | 'authorized' | 'partially_paid' | 'refunded' | 'voided' | '' ;
 
+export interface OrdersPage {
+  rows: Order[];
+  nextCursor?: string | null;
+  total?: number; // total orders across all pages (if backend returns it)
+}
+
+export interface OrdersSummary {
+  total: number;
+  pending: number;
+  processing: number;
+  shipped: number;
+  complete: number;
+  cancel: number;
+
+  // express breakdowns
+  expressPending: number;
+  expressProcessing: number;
+  expressShipped: number;
+  expressComplete: number;
+  expressCancel: number;
+}
+
 export interface OrderItem {
   TITLE: string;
   VARIANT_TITLE?: string;
@@ -312,5 +334,44 @@ removeTagRemote(shop: string, orderId: string | number, tag: string) {
   );
 }
 
-  
+getOrdersPage(opts: GetOrdersOptions & { cursor?: string | null } = {}): Observable<OrdersPage> {
+  let params = new HttpParams();
+  if (opts.shop)        params = params.set('shop', opts.shop);
+  if (opts.status)      params = params.set('status', String(opts.status));
+  if (opts.limit)       params = params.set('limit', String(opts.limit));
+  if (opts.search)      params = params.set('search', String(opts.search));
+  if (opts.cursor)      params = params.set('cursor', String(opts.cursor));
+  if (opts.refresh)     params = params.set('refresh', '1').set('ts', String(Date.now()));
+  if (opts.financial)   params = params.set('financial', String(opts.financial));
+  if (opts.from)        params = params.set('from', String(opts.from));
+  if (opts.to)          params = params.set('to', String(opts.to));
+  if (opts.notTagged)   params = params.set('notTagged', '1');
+  if (opts.tag)         params = params.set('tag', String(opts.tag));
+  if (opts.hideComplete)params = params.set('hideComplete', '1');
+
+  // 🔴 was `${this.base}/api/orders`
+  return this.http.get<any>(`${this.base}/api/orders/page`, { params }).pipe(
+    map((res: any): OrdersPage => {
+      const items = Array.isArray(res?.items) ? res.items : [];
+      const rows  = this.clientFilter(items.map(adaptRow), opts);
+      const nextCursor = typeof res?.nextCursor === 'string' ? res.nextCursor : null;
+      const total = typeof res?.total === 'number' ? res.total : undefined;
+      return { rows, nextCursor, total };
+    }),
+    catchError(() => of({ rows: [], nextCursor: null, total: 0 }))
+  );
+}
+
+  /** Global counters for the header chips (independent of pagination). */
+getSummary(): Observable<OrdersSummary> {
+  return this.http.get<OrdersSummary>(`${this.base}/api/orders/summary`).pipe(
+    // If your backend doesn't have /summary yet, don't crash the UI.
+    catchError(() => of({
+      total: 0,
+      pending: 0, processing: 0, shipped: 0, complete: 0, cancel: 0,
+      expressPending: 0, expressProcessing: 0, expressShipped: 0, expressComplete: 0, expressCancel: 0
+    } as OrdersSummary))
+  );
+}
+
 }

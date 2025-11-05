@@ -80,11 +80,23 @@
               <td colspan="2" class="right muted">Subtotal</td>
               <td class="right">{{ itemsSubtotal() | currency:order?.currency }}</td>
             </tr>
-            <tr *ngIf="deliveryFee() > 0">
+          
+            <tr *ngIf="discountAmount() > 0">
+              <td colspan="2" class="right muted">
+                Discounts
+                <ng-container *ngIf="order?.discountCodes?.length">
+                  ({{ order.discountCodes.join(', ') }})
+                </ng-container>
+              </td>
+              <td class="right">-{{ discountAmount() | currency:order?.currency }}</td>
+            </tr>
+          
+            <tr *ngIf="shippingFee() > 0">
               <td colspan="2" class="right muted">Delivery</td>
-              <td class="right">{{ deliveryFee() | currency:order?.currency }}</td>
+              <td class="right">{{ shippingFee() | currency:order?.currency }}</td>
             </tr>
           </tfoot>
+          
         </table>
 
         <div class="total-line">

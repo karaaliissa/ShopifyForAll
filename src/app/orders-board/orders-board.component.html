@@ -4,7 +4,8 @@
   <div class="header">
     <div>
       <h1>Orderly Print</h1>
-      <p *ngIf="!loading">{{ orders.length }} orders loaded</p>
+      <p *ngIf="!loading">{{ summary?.total ?? orders.length }} orders loaded</p>
+
       <p *ngIf="loading">Loading orders…</p>
       <p *ngIf="error" class="error">{{ error }}</p>
     </div>
@@ -142,6 +143,15 @@
 
   <br>
   <br>
+  <div class="pager" *ngIf="summary?.total">
+    <button class="btn" (click)="loadMore()" [disabled]="loading || !nextCursor">
+      {{ loading ? 'Loading…' : (nextCursor ? 'Load more' : 'All loaded') }}
+    </button>
+    <span class="muted" style="margin-left:8px">
+      Showing {{ orders.length }} of {{ summary?.total }}
+    </span>
+  </div>
+  
   <!-- NEW: Main tabs (HTML-only) -->
   <div class="tabs tabs--main">
     <button class="btn tab" [class.active]="activeTab==='orders'" (click)="activeTab='orders'">Orders</button>
@@ -318,7 +328,15 @@
       </tbody>
     </table>
   </div>
-
+  <div class="pager" *ngIf="summary?.total">
+    <button class="btn" (click)="loadMore()" [disabled]="loading || !nextCursor">
+      {{ loading ? 'Loading…' : (nextCursor ? 'Load more' : 'All loaded') }}
+    </button>
+    <span class="muted" style="margin-left:8px">
+      Showing {{ orders.length }} of {{ summary?.total }}
+    </span>
+  </div>
+  
   <div *ngIf="!loading && !orders?.length" class="empty">
     No orders yet.
   </div>
