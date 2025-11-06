@@ -409,11 +409,15 @@ discountAmount(): number {
   print() {
     const host = this.printArea?.nativeElement;
     if (!host) { window.print(); return; }
-
+  
     let html = host.innerHTML;
-    html = this.applyColorsArabicBilingual(html);
+  
+    // ✅ Only tint / bilingualize on PACKING
     if (this.mode === 'packing') {
-      html = this.applyColorsArabicBilingual(html); // keeps your packing fabric-Arabic rule
+      // colors: EN→(AR + EN), then fabrics: EN→AR only
+      html = this.applyColorsArabicBilingual(
+        this.applyFabricArabicOnly(html)
+      );
     }
 
     const css = `
@@ -557,7 +561,26 @@ discountAmount(): number {
     }
   </style>`;
   }
-
+  private applyFabricArabicOnly(html: string): string {
+    const fabrics: Record<string, string> = {
+      'cotton': 'قطن',
+      'cotton lycra': 'قطن لايكرا',
+      'poplin': 'بوبلين',
+      'crepe half lycra': 'كريب نصف لايكرا',
+      'leather': 'جلد',
+      'satin': 'ساتان',
+      'stretchy material': 'جورسيه',
+      'crepe without lycra': 'كريب بدون لايكرا',
+    };
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let out = html;
+    for (const k of Object.keys(fabrics).sort((a,b)=>b.length-a.length)) {
+      const rx = new RegExp(`(?<![\\w/])${esc(k)}(?![\\w/])`, 'gi');
+      out = out.replace(rx, () => `<span class="fabric-ar" dir="rtl">${fabrics[k]}</span>`);
+    }
+    return out;
+  }
+  
 
   private nextTick(): Promise<void> {
     return new Promise(res => setTimeout(res, 0));
@@ -568,14 +591,12 @@ discountAmount(): number {
     await this.nextTick();
     const host = this.printArea?.nativeElement;
     if (!host) return '';
+  
     let html = host.innerHTML;
-    // colors → EN + AR for both modes
-  html = this.applyColorsArabicBilingual(html);
-
-  // packing only → convert fabrics to Arabic (keep sizes)
-  if (mode === 'packing') {
-    html = this.applyColorsArabicBilingual(html);
-  }
+  
+    if (mode === 'packing') {
+      html = this.applyPrintColorArabic(this.applyColorsArabicBilingual(html));
+    }
   return html;
 
   }
