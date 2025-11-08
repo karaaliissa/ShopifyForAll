@@ -1,67 +1,212 @@
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 900; }
-.modal {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  background: #fff; border-radius: 1rem; padding: 1.5rem;
-  width: 85%; max-width: 900px; max-height: 90vh; overflow-y: auto;
-  font-family: "Segoe UI", sans-serif; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000;
-}
-.modal-header { display:flex; justify-content:space-between; align-items:center; font-weight:600; margin-bottom:.5rem; }
-.modal-actions { display:flex; gap:.75rem; margin:0.5rem 0 1rem; }
-.modal-actions button { padding:6px 12px; border:1px solid #ccc; border-radius:6px; cursor:pointer; background:#f8f8f8; }
-.modal-actions button.active { background:#111; color:#fff; }
-.modal-actions .primary { background:#2563eb; color:#fff; border:none; }
+/* =========================
+   Print Modal – FULL CSS
+   ========================= */
 
+/* Backdrop + modal shell */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 900;
+}
+.modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  width: 85%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  z-index: 1000;
+}
+
+/* Header + actions */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: .5rem;
+}
+.modal-actions {
+  display: flex;
+  gap: .75rem;
+  margin: .5rem 0 1rem;
+}
+.modal-actions button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #f8f8f8;
+}
+.modal-actions button.active {
+  background: #111;
+  color: #fff;
+}
+.modal-actions .primary {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+}
+
+/* -------- Content layout -------- */
+.print-content { font-size: 16px; color:#111; }
 .header-line { display:flex; justify-content:space-between; align-items:flex-start; }
 .logo { width:240px; height:auto; }
-.order-info { text-align:right; font-size:14px; }
+.order-info { text-align:right; font-size:16px; }
 .order-info p { margin: 2px 0; }
 
+.cols {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+  align-items:start;
+  margin:8px 0 16px;
+}
+.col h3 { margin:0 0 6px; }
+
+hr { border:0; border-top:1px solid #e5e7eb; margin:12px 0; }
+
+/* -------- Tables -------- */
 .items-table { width:100%; border-collapse:collapse; margin-top:.5rem; }
-.items-table th, .items-table td { padding:8px 6px; border-bottom:1px solid #e5e7eb; font-size:14px; }
+.items-table th,
+.items-table td {
+  padding:8px 6px;
+  border-bottom:1px solid #e5e7eb;
+  font-size: 18px;         /* base screen size */
+  line-height: 1.25;
+}
 .items-table th { text-align:left; font-weight:600; }
 .items-table .right { text-align:right; }
-.prod { display:flex; align-items:center; gap:8px; }
-.thumb { width:45px; height:45px; object-fit:cover; border-radius:6px; border:1px solid #ddd; }
-.muted { font-size:12px; color:#666; }
-
-.total-line { display:flex; justify-content:flex-end; margin-top:1rem; font-size:18px; font-weight:600; }
+.muted { font-size:14px; color:#666; }
+.total-line {
+  display:flex; justify-content:flex-end;
+  margin-top:1rem; font-size:18px; font-weight:600;
+}
 .total-line span { margin-right:8px; }
 .footer-note { text-align:center; margin-top:2rem; font-size:14px; color:#555; }
 
-.packing-wrapper { position: relative; }
-.packing-wrapper .thumb { width: 90px; height: 90px; }
-
-.cols { display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start; margin:8px 0 16px; }
-.col h3 { margin:0 0 6px; }
-@media print, (max-width: 700px) { .cols { grid-template-columns:1fr; } }
-
-/* PRINT ONLY toggles */
-.print-only { display: none; }
-@media print {
-  .modal-backdrop, .modal-header, .modal-actions { display:none !important; }
-  .modal { box-shadow:none; border:0; }
-  .print-only { display:block; }
-  .packing-wrapper .items-table .thumb { width:90px !important; height:90px !important; }
+/* -------- Product row -------- */
+.prod { display:flex; align-items:center; gap:8px; }
+.items-table td .prod > div {
+  font-size: 18px;           /* invoice & default preview title */
+  line-height: 1.25;
+}
+.items-table td .prod > div .muted {
+  font-size: 15px;           /* invoice & default preview variant */
 }
 
-/* Badge (same class names used in print()) */
-.zone-badge { position: fixed; top: 10mm; left: 50%; transform: translateX(-50%); z-index: 9999; text-align: center; pointer-events: none; }
+/* Image thumbs – show the entire photo (no cropping) */
+.thumb {
+  width: 90px;                 /* screen sizes */
+  height: 90px;
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  aspect-ratio: 1 / 1;
+}
+
+/* -------- Packing PREVIEW overrides (screen) -------- */
+.packing-wrapper .thumb {
+  width: 110px;
+  height: 110px;
+}
+.packing-wrapper .items-table td .prod > div{
+  font-size: 22px !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+}
+.packing-wrapper .items-table td .prod > div .muted{
+  font-size: 17px !important;
+  font-weight: 500 !important;
+}
+
+/* -------- Zone badge (screen preview) -------- */
+.packing-wrapper { position: relative; }
+.zone-badge {
+  position: fixed;
+  top: 10mm;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  text-align: center;
+  pointer-events: none;
+}
 .zone-badge .circle {
-  --badge-size: 120px; width: var(--badge-size); height: var(--badge-size);
-  border-radius: 50%; border: 8px solid var(--badge-color, #1FA64A);
-  color: var(--badge-color, #1FA64A); display:flex; align-items:center; justify-content:center;
+  --badge-size: 120px;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  border-radius: 50%;
+  border: 8px solid var(--badge-color, #1FA64A);
+  color: var(--badge-color, #1FA64A);
+  display:flex; align-items:center; justify-content:center;
   font-weight:800; font-size:72px; line-height:1; margin:0 auto; opacity:.3;
 }
 .zone-badge.express .circle { display:none; }
-.zone-badge.express .express-text { color:#d61f1f; font-weight:900; font-size:60px; line-height:1.05; }
+.zone-badge.express .express-text {
+  color:#d61f1f; font-weight:900; font-size:60px; line-height:1.05;
+}
 .zone-badge.express .express-text .ar { font-size:34px; }
 
-/* Size ring (screen default; print overrides exist in TS-injected css) */
+/* -------- Size ring (screen) -------- */
 .size-ring {
   display:inline-flex; align-items:center; justify-content:center;
-  width:18px; height:18px; border:2px solid #333; border-radius:50%;
-  box-sizing:border-box; padding:1px 2px; font-size:10px; line-height:1; color:inherit;
+  width:18px; height:18px;
+  border:2px solid #333; border-radius:50%;
+  box-sizing:border-box; padding:1px 2px;
+  font-size:10px; line-height:1; color:inherit;
   vertical-align:middle; margin:0 8px;
 }
+
+/* Keep invoice neutral even if color/fabric spans exist */
 .invoice-wrapper [class*="color-"],
 .invoice-wrapper .fabric-ar { color: inherit !important; }
+
+/* -------- Responsive & Print -------- */
+@media print, (max-width: 700px) {
+  .cols { grid-template-columns:1fr; }
+}
+
+/* Print-only toggles + overrides */
+.print-only { display: none; }
+
+@media print {
+  .modal-backdrop, .modal-header, .modal-actions { display:none !important; }
+  .modal { box-shadow:none; border:0; }
+
+  .print-content { font-size: 16px; }
+  .items-table th, .items-table td { font-size: 16px; }
+  .muted { font-size: 14px; }
+  .order-info { font-size: 16px; }
+
+  .thumb {
+    width: 90px !important;
+    height: 90px !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    background: #fff !important;
+  }
+  .packing-wrapper .thumb {
+    width: 110px !important;
+    height: 110px !important;
+  }
+
+  .print-only { display:block; }
+}
+/* Larger ring for sizes in packing */
+.packing-wrapper .size-ring,
+.size-ring.size-ring--lg {
+  width: 26px !important;
+  height: 26px !important;
+  border-width: 3px !important;
+  font-size: 12px !important;
+  margin: 0 12px !important;
+}
