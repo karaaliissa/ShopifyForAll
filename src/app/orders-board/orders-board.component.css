@@ -391,3 +391,19 @@ tr:hover { background: #f9fafb; }
   color: #555;
   margin: 8px 0;
 }
+.tabs.tabs--main {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.btn.tab {
+  border-radius: 999px;
+  padding-inline: 14px;
+}
+
+.btn.tab.active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
