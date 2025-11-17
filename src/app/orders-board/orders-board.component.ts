@@ -8,7 +8,6 @@ import { PrintModalComponent } from '../print-modal/print-modal.component';
 import { DeliveryDateModalComponent } from '../delivery-date-modal/delivery-date-modal.component';
 
 type UIOrder = Order & { items?: any[] };
-type StatusFilter = 'all' | 'pending' | 'processing' | 'shipped' | 'complete' | 'cancel';
 
 @Component({
   selector: 'app-orders-board',
@@ -22,486 +21,41 @@ export class OrdersBoardComponent implements OnInit {
   @ViewChild(PrintModalComponent) printModal?: PrintModalComponent;
 
   activeTab: 'orders' | 'list' | 'done' = 'orders';
-  statusFilter: StatusFilter = 'all';    // 👈 which chip is active
 
   showDateModal = false;
   dateModalOrder: any = null;
-  onlyDated = false;
+  onlyDated = false; // optional toggle in List tab
   initialDeliverBy: string | null = null;
   initialNote: string | null = null;
-  listCardMax = 20;
+  listCardMax = 20; // show up to 20 non-empty day cards
 
   orders: UIOrder[] = [];
+
   loading = false;
   error = '';
   selectedOrder: any = null;
   showPrint = false;
 
-  // search
-  searchTerm: string = '';
-
-  // shipday export
+  // shipday export controls (unchanged)
   exportShop = 'cropndtop.myshopify.com';
   exportDate = new Date().toISOString().slice(0, 10);
   printStoreName = 'cropndtop';
 
-  summary: OrdersSummary | null = null;
-  pageSize = 25;
-  cursor: string | null = null;
-  nextCursor: string | null = null;
+  summary: OrdersSummary | null = null;   // global counters
+  pageSize = 25;                          // page size
+  cursor: string | null = null;          // current cursor (request)
+  nextCursor: string | null = null;      // next page cursor (response)
+
+  // 🔍 search + status filter
+  searchTerm = '';
+  statusFilter: 'all' | 'pending' | 'processing' | 'shipped' = 'all';
+
+  private has(o: Order, t: string) { return o.tags.map(x => x.toLowerCase()).includes(t.toLowerCase()); }
+  private isComplete(o: Order) { return this.has(o, 'complete'); }
 
   constructor(private ordersSvc: OrdersService, private exportSvc: ExportService) {}
 
-  // --- helpers for tags / status -------------------------------------------------
-  private has(o: Order, t: string) {
-    return o.tags.map(x => x.toLowerCase()).includes(t.toLowerCase());
-  }
-  private isComplete(o: Order) { return this.has(o, 'complete'); }
-
-  statusOf(o: Order): 'pending' | 'processing' | 'shipped' | 'complete' | 'cancel' {
-    if (this.has(o, 'complete'))   return 'complete';
-    if (this.has(o, 'cancel'))     return 'cancel';
-    if (this.has(o, 'shipped'))    return 'shipped';
-    if (this.has(o, 'processing')) return 'processing';
-
-    const f = (o.fulfillmentStatus || '').toString().trim().toLowerCase();
-    if (this.has(o, 'pending') || f === '' || f === 'open' || f === 'unfulfilled') {
-      return 'pending';
-    }
-    return 'pending';
-  }
-  private statusIs(o: Order, s: ReturnType<OrdersBoardComponent['statusOf']>) {
-    return this.statusOf(o) === s;
-  }
-
-  fulfillmentLabel(o: Order): string {
-    const m = this.statusOf(o);
-    return m.charAt(0).toUpperCase() + m.slice(1);
-  }
-  fulfillmentClass(o: Order): string {
-    return this.statusOf(o);
-  }
-
-  // --- counters ------------------------------------------------------------------
-  get pendingCount()    { return this.summary?.pending    ?? this.orders.filter(o => this.statusOf(o) === 'pending').length; }
-  get processingCount() { return this.summary?.processing ?? this.orders.filter(o => this.statusOf(o) === 'processing').length; }
-  get shippedCount()    { return this.summary?.shipped    ?? this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
-  get completeCount()   { return this.summary?.complete   ?? this.orders.filter(o => this.statusOf(o) === 'complete').length; }
-  get cancelCount()     { return this.summary?.cancel     ?? this.orders.filter(o => this.statusOf(o) === 'cancel').length; }
-
-  get expressPendingCount()    { return this.summary?.expressPending    ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'pending')).length; }
-  get expressProcessingCount() { return this.summary?.expressProcessing ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'processing')).length; }
-  get expressShippedCount()    { return this.summary?.expressShipped    ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'shipped')).length; }
-  get expressCompleteCount()   { return this.summary?.expressComplete   ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'complete')).length; }
-  get expressCancelCount()     { return this.summary?.expressCancel     ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'cancel')).length; }
-
-  // --- totals --------------------------------------------------------------------
-  get grandTotal(): number {
-    return (this.orders || []).reduce((sum, o: any) => sum + (o.total || 0), 0);
-  }
-  get totalsCurrency(): string | undefined {
-    return this.orders?.find(o => !!o.currency)?.currency;
-  }
-
-  // --- search + per-tab filtered lists ------------------------------------------
-  private filterBySearch(list: UIOrder[]): UIOrder[] {
-    const term = (this.searchTerm || '').trim().toLowerCase();
-    if (!term) return list;
-
-    return list.filter(o => {
-      const idStr   = ((o.orderName || o.orderId || '') + '').toLowerCase();
-      const nameStr = (o.shipTo?.name || '').toLowerCase();
-      return idStr.includes(term) || nameStr.includes(term);
-    });
-  }
-
-  /** Orders tab: Pending + Processing + Shipped, optionally filtered by chip */
-  get openOrders(): UIOrder[] {
-    const all = this.orders || [];
-    let rows = all.filter(o => {
-      const s = this.statusOf(o);
-      return s === 'pending' || s === 'processing' || s === 'shipped';
-    });
-
-    // chip status filter
-    if (this.statusFilter !== 'all') {
-      rows = rows.filter(o => this.statusOf(o) === this.statusFilter);
-    }
-
-    return this.filterBySearch(rows);
-  }
-
-  /** Done tab: Complete + Cancel orders, optionally filtered by chip */
-  get doneOrders(): UIOrder[] {
-    const all = this.orders || [];
-    let rows = all.filter(o => {
-      const s = this.statusOf(o);
-      return s === 'complete' || s === 'cancel';
-    });
-
-    if (this.statusFilter === 'complete' || this.statusFilter === 'cancel') {
-      rows = rows.filter(o => this.statusOf(o) === this.statusFilter);
-    }
-
-    return this.filterBySearch(rows);
-  }
-
-  /** Last 3 open orders (ignores filters, always pure status) */
-  get last3OpenOrders(): Order[] {
-    const open = (this.orders || []).filter(o => {
-      const s = this.statusOf(o);
-      return s !== 'shipped' && s !== 'complete' && s !== 'cancel';
-    });
-    open.sort((a, b) =>
-      (a.createdAt?.getTime() ?? a.updatedAt?.getTime() ?? 0) -
-      (b.createdAt?.getTime() ?? b.updatedAt?.getTime() ?? 0)
-    );
-    return open.slice(0, 3);
-  }
-
-  // set filter when clicking chips
-  setStatusFilter(filter: StatusFilter) {
-    this.statusFilter = filter;
-
-    if (filter === 'complete' || filter === 'cancel') {
-      this.activeTab = 'done';
-    } else if (filter === 'pending' || filter === 'processing' || filter === 'shipped') {
-      this.activeTab = 'orders';
-    }
-    // 'all' → keep current tab
-  }
-
-  // --- business helpers for list / cards ----------------------------------------
-  private escapeHtml(s: string) {
-    return (s || '').toString()
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;');
-  }
-
-  private isWeekend(d: Date) {
-    const day = d.getDay();
-    return day === 0 || day === 6;
-  }
-  private nextBusinessDay(d: Date): Date {
-    const x = new Date(d);
-    while (this.isWeekend(x)) x.setDate(x.getDate() + 1);
-    return x;
-  }
-  private addBusinessDays(d: Date, n: number): Date {
-    const x = new Date(d);
-    let added = 0;
-    while (added < n) {
-      x.setDate(x.getDate() + 1);
-      if (!this.isWeekend(x)) added++;
-    }
-    return x;
-  }
-
-  private dateLabelFromISO(iso: string): string {
-    const [y, m, d] = iso.split('-').map(Number);
-    const dt = new Date(Date.UTC(y, m - 1, d));
-    return dt.toLocaleDateString(undefined, {
-      weekday: 'long',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      timeZone: 'UTC'
-    });
-  }
-  private ymd(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-  private fromYMD(s: string): Date {
-    const [y, m, d] = s.split('-').map(Number);
-    return new Date(y, m - 1, d);
-  }
-
-  public isOutsideLebanon(o: Order): boolean {
-    const c = (o.shipTo?.country || '').trim().toLowerCase();
-    return !!c && c !== 'lebanon';
-  }
-
-  private deliverDateFor(o: Order): string | null {
-    if (o.deliverBy) return o.deliverBy;
-
-    const s = this.statusOf(o);
-    if (s !== 'pending' && s !== 'processing') return null;
-
-    const created = (o.createdAt instanceof Date && !isNaN(o.createdAt as any))
-      ? o.createdAt as Date
-      : (o.updatedAt || new Date());
-
-    if (this.isExpress(o)) {
-      const d = this.addBusinessDays(created, 2);
-      return this.ymd(d);
-    }
-    if (this.isOutsideLebanon(o)) {
-      const d = this.addBusinessDays(created, 1);
-      return this.ymd(d);
-    }
-    return null;
-  }
-
-  private startDayForCards(): Date {
-    const dates: string[] = [];
-    for (const o of (this.orders || [])) {
-      const s = this.statusOf(o);
-      if (s !== 'pending' && s !== 'processing') continue;
-      const d = this.deliverDateFor(o);
-      if (d) dates.push(d);
-    }
-
-    if (dates.length) {
-      dates.sort();
-      return this.nextBusinessDay(this.fromYMD(dates[0]));
-    }
-
-    const today = this.nextBusinessDay(new Date(new Date().setHours(0,0,0,0)));
-    return today;
-  }
-
-  get dateCards(): { dateISO: string; dateLabel: string; orders: (Order & { isExpress: boolean })[] }[] {
-    const byDay = new Map<string, (Order & { isExpress: boolean })[]>();
-
-    for (const o of (this.orders || [])) {
-      const s = this.statusOf(o);
-      if (s !== 'pending' && s !== 'processing') continue;
-
-      const key = this.deliverDateFor(o);
-      if (!key) continue;
-
-      const arr = byDay.get(key) ?? [];
-      arr.push({ ...(o as any), isExpress: this.isExpress(o) });
-      byDay.set(key, arr);
-    }
-
-    const out: { dateISO: string; dateLabel: string; orders: (Order & { isExpress: boolean })[] }[] = [];
-    let d = this.startDayForCards();
-
-    while (out.length < this.listCardMax) {
-      if (!this.isWeekend(d)) {
-        const iso = this.ymd(d);
-        const orders = (byDay.get(iso) || []).sort((a, b) =>
-          (a.orderName || a.orderId).localeCompare(b.orderName || b.orderId)
-        );
-        out.push({ dateISO: iso, dateLabel: this.dateLabelFromISO(iso), orders });
-      }
-      d = new Date(d); d.setDate(d.getDate() + 1);
-    }
-    return out;
-  }
-
-  // --- date modal / notes --------------------------------------------------------
-  private beirutNowFrom(d: Date): Date {
-    return d;
-  }
-  private autoDeliverByForExpress(o: Order): string {
-    const created = o.createdAt instanceof Date ? o.createdAt : new Date(o.createdAt as any);
-    const local = this.beirutNowFrom(created);
-    const hr = local.getHours();
-    const base = new Date(local);
-    base.setDate(base.getDate() + (hr < 12 ? 1 : 2));
-    return base.toISOString().slice(0,10);
-  }
-
-  canEditDate(o: Order) {
-    const s = this.statusOf(o);
-    return s === 'pending' || s === 'processing';
-  }
-
-  openDateModal(o: Order) {
-    if (!this.canEditDate(o)) return;
-    this.dateModalOrder = o;
-
-    let initial: string | null = o.deliverBy ?? null;
-    if (!initial && this.isExpress(o)) {
-      initial = this.autoDeliverByForExpress(o);
-    }
-    this.initialDeliverBy = initial;
-    this.initialNote = o.noteLocal ?? null;
-    this.showDateModal = true;
-  }
-
-  saveDateModal(payload: { date: string | null, note: string | null }) {
-    const o = this.dateModalOrder;
-    if (!o) return;
-
-    const prevDate = o.deliverBy ?? null;
-    const prevNote = o.noteLocal ?? null;
-
-    o.deliverBy = payload.date ?? null;
-    o.noteLocal = payload.note ?? null;
-
-    this.ordersSvc.setDeliverBy(o.shopDomain, o.orderId, o.deliverBy).subscribe({
-      next: r => {
-        if (!r?.ok) {
-          o.deliverBy = prevDate;
-        }
-        this.ordersSvc.setNoteLocal(o.shopDomain, o.orderId, o.noteLocal).subscribe({
-          next: res => { if (!res?.ok) o.noteLocal = prevNote; },
-          error: () => { o.noteLocal = prevNote; }
-        });
-      },
-      error: () => {
-        o.deliverBy = prevDate;
-        this.ordersSvc.setNoteLocal(o.shopDomain, o.orderId, o.noteLocal).subscribe({ error: ()=>{} });
-      }
-    });
-
-    this.closeDateModal();
-  }
-
-  closeDateModal() {
-    this.showDateModal = false;
-    setTimeout(() => {
-      this.dateModalOrder = null;
-      this.initialDeliverBy = null;
-    }, 0);
-  }
-
-  // --- tags / actions -----------------------------------------------------------
-  nextActions(o: Order): string[] {
-    const hasProcessing = this.has(o, 'processing');
-    const hasShipped = this.has(o, 'shipped');
-    const hasComplete = this.has(o, 'complete');
-    const hasCancel = this.has(o, 'cancel');
-
-    if (hasComplete) return [];
-    if (hasShipped)  return ['Complete'];
-    if (hasProcessing) return ['Shipped', 'Cancel'];
-    if (hasCancel)   return [];
-    return ['Processing', 'Cancel'];
-  }
-
-  openPrintModal(order: any) {
-    this.selectedOrder = order;
-    this.showPrint = true;
-  }
-  onModalClosed() {
-    this.showPrint = false;
-    setTimeout(() => { this.selectedOrder = null; }, 0);
-  }
-
-  onNextAction(o: Order, e: Event) {
-    const sel = e.target as HTMLSelectElement;
-    const value = sel.value;
-    if (!value) return;
-
-    if (this.has(o, 'complete') && value.toLowerCase() !== 'complete') {
-      sel.value = '';
-      alert('Order is complete. You cannot move it back.');
-      return;
-    }
-
-    const prev = [...o.tags];
-    const already = o.tags.map(t => t.toLowerCase()).includes(value.toLowerCase());
-    if (!already) o.tags = [...o.tags, value];
-
-    this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
-      next: r => { if (!r?.ok) o.tags = prev; },
-      error: () => { o.tags = prev; }
-    });
-
-    sel.selectedIndex = 0;
-  }
-
-  addTag(order: Order, tag: string) {
-    if (tag && !order.tags?.includes(tag)) {
-      order.tags = [...order.tags, tag];
-    }
-  }
-
-  onTagChange(o: Order, event: Event) {
-    const value = (event.target as HTMLSelectElement).value;
-    if (!value) return;
-
-    const prev = [...(o.tags || [])];
-    const already = (o.tags || []).map(t => t.toLowerCase()).includes(value.toLowerCase());
-    if (!already) o.tags = [...(o.tags || []), value];
-
-    this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
-      next: r => { if (!r?.ok) o.tags = prev; },
-      error: () => { o.tags = prev; }
-    });
-
-    (event.target as HTMLSelectElement).value = '';
-  }
-
-  removeTag(o: Order, tag: string) {
-    if (tag.toLowerCase() === 'complete') {
-      if (!confirm('This order is Complete. Are you sure you want to remove that status?')) return;
-    }
-
-    const prev = [...o.tags];
-    o.tags = o.tags.filter(t => t.toLowerCase() !== tag.toLowerCase());
-
-    this.ordersSvc.removeTagRemote(o.shopDomain, o.orderId, tag).subscribe({
-      next: r => { if (!r?.ok) o.tags = prev; },
-      error: () => { o.tags = prev; }
-    });
-  }
-
-  getTags(tags?: string[]): string[] {
-    return (tags || []).map(t => t.trim()).filter(t => t.length > 0);
-  }
-
-  parseProps(json?: string): { name: string; value: any }[] {
-    if (!json) return [];
-    try { return JSON.parse(json); } catch { return []; }
-  }
-
-  private ensureItemsLoaded(o: UIOrder): Promise<void> {
-    if (o.items && o.items.length >= 0) return Promise.resolve();
-    return firstValueFrom(this.ordersSvc.getOrderItems(o.shopDomain, o.orderId))
-      .then(items => { o.items = items || []; })
-      .catch(() => {});
-  }
-
-  async onPrintAndProcess(o: UIOrder) {
-    const already = (o.tags || []).map(t => t.toLowerCase()).includes('processing');
-    const prev = [...(o.tags || [])];
-    if (!already) {
-      o.tags = [...(o.tags || []), 'Processing'];
-      this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, 'Processing').subscribe({
-        next: r => { if (!r?.ok) o.tags = prev; },
-        error: () => { o.tags = prev; }
-      });
-    }
-
-    await this.ensureItemsLoaded(o);
-
-    this.selectedOrder = o;
-    this.showPrint = true;
-
-    setTimeout(async () => {
-      try {
-        await this.printModal?.printBundle({ invoice: 2, packing: 1 });
-      } finally {
-        this.onModalClosed();
-      }
-    }, 50);
-  }
-
-  // --- express & old flags ------------------------------------------------------
-  isExpress(o: Order): boolean {
-    return /\bexpress\b/i.test(o.shippingMethod || '');
-  }
-
-  isOld(o: Order): boolean {
-    const d = o.createdAt || o.updatedAt;
-    if (!d) return false;
-    const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-    const tags = (o.tags || []).join(',');
-    const shippedOrComplete = /\b(shipped|complete)\b/i.test(tags);
-    return ageDays > 7 && !shippedOrComplete;
-  }
-
-  // --- printing cards for date list ---------------------------------------------
+  // ========== PRINT CARDS (list tab) =========================================
   printCards() {
     const rows: Array<{ store: string, orderName: string, customer: string, city: string, date: string, note?: string }> = [];
     for (const day of this.dateCards) {
@@ -570,30 +124,470 @@ export class OrdersBoardComponent implements OnInit {
     }, 300);
   }
 
-  // --- Shipday export -----------------------------------------------------------
-  exportShipday() {
-    this.exportSvc.shipday(this.exportShop, this.exportDate).subscribe({
-      next: res => {
-        const cd = res.headers.get('Content-Disposition') || '';
-        const match = /filename="?([^"]+)"?/.exec(cd);
-        const filename = match?.[1] || `shipday-${this.exportDate}.csv`;
+  private escapeHtml(s: string) {
+    return (s || '').toString()
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
 
-        const blob = new Blob([res.body!], { type: 'text/csv;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+  // ── helpers: weekdays ────────────────────────────────────────────────────────
+  private isWeekend(d: Date) {
+    const day = d.getDay(); // 0 Sun .. 6 Sat
+    return day === 0 || day === 6;
+  }
+  private nextBusinessDay(d: Date): Date {
+    const x = new Date(d);
+    while (this.isWeekend(x)) x.setDate(x.getDate() + 1);
+    return x;
+  }
+  private addBusinessDays(d: Date, n: number): Date {
+    const x = new Date(d);
+    let added = 0;
+    while (added < n) {
+      x.setDate(x.getDate() + 1);
+      if (!this.isWeekend(x)) added++;
+    }
+    return x;
+  }
+
+  private dateLabelFromISO(iso: string): string {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.toLocaleDateString(undefined, {
+      weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC'
+    });
+  }
+  private ymd(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  private fromYMD(s: string): Date {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // ── business rules: auto date when missing ───────────────────────────────────
+  public isOutsideLebanon(o: Order): boolean {
+    const c = (o.shipTo?.country || '').trim().toLowerCase();
+    return !!c && c !== 'lebanon';
+  }
+
+  private deliverDateFor(o: Order): string | null {
+    if (o.deliverBy) return o.deliverBy;
+
+    const s = this.statusOf(o);
+    if (s !== 'pending' && s !== 'processing') return null;
+
+    const created = (o.createdAt instanceof Date && !isNaN(o.createdAt as any))
+      ? o.createdAt as Date
+      : (o.updatedAt || new Date());
+
+    if (this.isExpress(o)) {
+      const d = this.addBusinessDays(created, 2);
+      return this.ymd(d);
+    }
+    if (this.isOutsideLebanon(o)) {
+      const d = this.addBusinessDays(created, 1);
+      return this.ymd(d);
+    }
+    return null;
+  }
+
+  private startDayForCards(): Date {
+    const dates: string[] = [];
+
+    for (const o of (this.orders || [])) {
+      const s = this.statusOf(o);
+      if (s !== 'pending' && s !== 'processing') continue;
+      const d = this.deliverDateFor(o);
+      if (d) dates.push(d);
+    }
+
+    if (dates.length) {
+      dates.sort();
+      return this.nextBusinessDay(this.fromYMD(dates[0]));
+    }
+
+    const today = this.nextBusinessDay(new Date(new Date().setHours(0,0,0,0)));
+    return today;
+  }
+
+  // ── dateCards: 20 *weekdays* continuous ─────────────────────────────────────
+  get dateCards(): { dateISO: string; dateLabel: string; orders: (Order & { isExpress: boolean })[] }[] {
+    const byDay = new Map<string, (Order & { isExpress: boolean })[]>();
+
+    for (const o of (this.orders || [])) {
+      const s = this.statusOf(o);
+      if (s !== 'pending' && s !== 'processing') continue;
+
+      const key = this.deliverDateFor(o);
+      if (!key) continue;
+
+      const arr = byDay.get(key) ?? [];
+      arr.push({ ...(o as any), isExpress: this.isExpress(o) });
+      byDay.set(key, arr);
+    }
+
+    const out: { dateISO: string; dateLabel: string; orders: (Order & { isExpress: boolean })[] }[] = [];
+    let d = this.startDayForCards();
+
+    while (out.length < this.listCardMax) {
+      if (!this.isWeekend(d)) {
+        const iso = this.ymd(d);
+        const orders = (byDay.get(iso) || []).sort((a, b) =>
+          (a.orderName || a.orderId).localeCompare(b.orderName || b.orderId)
+        );
+        out.push({ dateISO: iso, dateLabel: this.dateLabelFromISO(iso), orders });
+      }
+      d = new Date(d);
+      d.setDate(d.getDate() + 1);
+    }
+
+    return out;
+  }
+
+  get last3OpenOrders(): Order[] {
+    const open = (this.orders || []).filter(o => {
+      const s = this.statusOf(o);
+      return s !== 'shipped' && s !== 'complete' && s !== 'cancel';
+    });
+    open.sort((a,b) =>
+      (a.createdAt?.getTime() ?? a.updatedAt?.getTime() ?? 0)
+      - (b.createdAt?.getTime() ?? b.updatedAt?.getTime() ?? 0)
+    );
+    return open.slice(0,3);
+  }
+
+  private beirutNowFrom(d: Date): Date {
+    return d;
+  }
+  private autoDeliverByForExpress(o: Order): string {
+    const created = o.createdAt instanceof Date ? o.createdAt : new Date(o.createdAt as any);
+    const local = this.beirutNowFrom(created);
+    const hr = local.getHours();
+    const base = new Date(local);
+    base.setDate(base.getDate() + (hr < 12 ? 1 : 2));
+    return base.toISOString().slice(0,10);
+  }
+
+  canEditDate(o: Order) {
+    const s = this.statusOf(o);
+    return s === 'pending' || s === 'processing';
+  }
+
+  openDateModal(o: Order) {
+    if (!this.canEditDate(o)) return;
+    this.dateModalOrder = o;
+
+    let initial: string | null = o.deliverBy ?? null;
+    if (!initial && this.isExpress(o)) {
+      initial = this.autoDeliverByForExpress(o);
+    }
+    this.initialDeliverBy = initial;
+    this.initialNote = o.noteLocal ?? null;
+    this.showDateModal = true;
+  }
+
+  saveDateModal(payload: { date: string | null, note: string | null }) {
+    const o = this.dateModalOrder;
+    if (!o) return;
+
+    const prevDate = o.deliverBy ?? null;
+    const prevNote = o.noteLocal ?? null;
+
+    o.deliverBy = payload.date ?? null;
+    o.noteLocal = payload.note ?? null;
+
+    this.ordersSvc.setDeliverBy(o.shopDomain, o.orderId, o.deliverBy).subscribe({
+      next: r => {
+        if (!r?.ok) {
+          o.deliverBy = prevDate;
+        }
+        this.ordersSvc.setNoteLocal(o.shopDomain, o.orderId, o.noteLocal).subscribe({
+          next: res => { if (!res?.ok) o.noteLocal = prevNote; },
+          error: () => { o.noteLocal = prevNote; }
+        });
       },
-      error: () => alert('Failed to export Shipday CSV.')
+      error: () => {
+        o.deliverBy = prevDate;
+        this.ordersSvc.setNoteLocal(o.shopDomain, o.orderId, o.noteLocal).subscribe({ error: ()=>{} });
+      }
+    });
+
+    this.closeDateModal();
+  }
+
+  closeDateModal() {
+    this.showDateModal = false;
+    setTimeout(() => {
+      this.dateModalOrder = null;
+      this.initialDeliverBy = null;
+      this.initialNote = null;
+    }, 0);
+  }
+
+  // ---- Canonical status per order ----
+  statusOf(o: Order): 'pending' | 'processing' | 'shipped' | 'complete' | 'cancel' {
+    if (this.has(o, 'complete'))   return 'complete';
+    if (this.has(o, 'cancel'))     return 'cancel';
+    if (this.has(o, 'shipped'))    return 'shipped';
+    if (this.has(o, 'processing')) return 'processing';
+
+    const f = (o.fulfillmentStatus || '').toString().trim().toLowerCase();
+    if (this.has(o, 'pending') || f === '' || f === 'open' || f === 'unfulfilled') {
+      return 'pending';
+    }
+    return 'pending';
+  }
+
+  private statusIs(o: Order, s: ReturnType<OrdersBoardComponent['statusOf']>) {
+    return this.statusOf(o) === s;
+  }
+
+  // 🔢 Counters
+  get pendingCount()    { return this.summary?.pending    ?? this.orders.filter(o => this.statusOf(o) === 'pending').length; }
+  get processingCount() { return this.summary?.processing ?? this.orders.filter(o => this.statusOf(o) === 'processing').length; }
+  get shippedCount()    { return this.summary?.shipped    ?? this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
+  get completeCount()   { return this.summary?.complete   ?? this.orders.filter(o => this.statusOf(o) === 'complete').length; }
+  get cancelCount()     { return this.summary?.cancel     ?? this.orders.filter(o => this.statusOf(o) === 'cancel').length; }
+
+  get expressPendingCount()    { return this.summary?.expressPending    ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'pending')).length; }
+  get expressProcessingCount() { return this.summary?.expressProcessing ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'processing')).length; }
+  get expressShippedCount()    { return this.summary?.expressShipped    ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'shipped')).length; }
+  get expressCompleteCount()   { return this.summary?.expressComplete   ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'complete')).length; }
+  get expressCancelCount()     { return this.summary?.expressCancel     ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'cancel')).length; }
+
+  // status pill
+  fulfillmentLabel(o: Order): string {
+    const m = this.statusOf(o);
+    return m.charAt(0).toUpperCase() + m.slice(1);
+  }
+  fulfillmentClass(o: Order): string {
+    return this.statusOf(o);
+  }
+
+  // Totals
+  get grandTotal(): number {
+    return (this.orders || []).reduce((sum, o: any) => sum + (o.total || 0), 0);
+  }
+  get totalsCurrency(): string | undefined {
+    return this.orders?.find(o => !!o.currency)?.currency;
+  }
+
+  // ========= FILTERED LISTS FOR TABS =========================================
+  get openOrders(): UIOrder[] {
+    return (this.orders || []).filter(o => {
+      const s = this.statusOf(o);
+      return s === 'pending' || s === 'processing' || s === 'shipped';
     });
   }
 
-  // --- data loading -------------------------------------------------------------
+  get doneOrders(): UIOrder[] {
+    return (this.orders || []).filter(o => {
+      const s = this.statusOf(o);
+      return s === 'complete' || s === 'cancel';
+    });
+  }
+
+  // 🔍 apply statusFilter + search
+  get filteredOpenOrders(): UIOrder[] {
+    let list = this.openOrders;
+
+    if (this.statusFilter !== 'all') {
+      list = list.filter(o => this.statusOf(o) === this.statusFilter);
+    }
+
+    const q = this.searchTerm.trim().toLowerCase();
+    if (q) {
+      list = list.filter(o =>
+        (o.orderName || '').toLowerCase().includes(q) ||
+        String(o.orderId).toLowerCase().includes(q) ||
+        (o.shipTo?.name || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }
+
+  get filteredDoneOrders(): UIOrder[] {
+    let list = this.doneOrders;
+    const q = this.searchTerm.trim().toLowerCase();
+    if (q) {
+      list = list.filter(o =>
+        (o.orderName || '').toLowerCase().includes(q) ||
+        String(o.orderId).toLowerCase().includes(q) ||
+        (o.shipTo?.name || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }
+
+  setStatusFilter(mode: 'all' | 'pending' | 'processing' | 'shipped') {
+    this.statusFilter = mode;
+  }
+
+  // ========= Actions / tags / Shopify fulfill ================================
+  nextActions(o: Order): string[] {
+    const hasProcessing = this.has(o, 'processing');
+    const hasShipped = this.has(o, 'shipped');
+    const hasComplete = this.has(o, 'complete');
+    const hasCancel = this.has(o, 'cancel');
+
+    if (hasComplete) return [];
+    if (hasShipped)  return ['Complete'];
+    if (hasProcessing) return ['Shipped', 'Cancel'];
+    if (hasCancel) return [];
+    return ['Processing', 'Cancel'];
+  }
+
+  openPrintModal(order: any) {
+    this.selectedOrder = order;
+    this.showPrint = true;
+  }
+
+  onModalClosed() {
+    this.showPrint = false;
+    setTimeout(() => { this.selectedOrder = null; }, 0);
+  }
+
+  onNextAction(o: Order, e: Event) {
+    const sel = e.target as HTMLSelectElement;
+    const value = sel.value;
+    if (!value) return;
+
+    if (this.has(o, 'complete') && value.toLowerCase() !== 'complete') {
+      sel.value = '';
+      alert('Order is complete. You cannot move it back.');
+      return;
+    }
+
+    const prev = [...o.tags];
+    const already = o.tags.map(t => t.toLowerCase()).includes(value.toLowerCase());
+    if (!already) o.tags = [...o.tags, value];
+
+    this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
+      next: r => {
+        if (!r?.ok) {
+          o.tags = prev;
+        } else {
+          // ✅ If user chose "Shipped", trigger Shopify fulfillment
+          if (value.toLowerCase() === 'shipped') {
+            const ok = confirm('Mark all items as fulfilled in Shopify for this order?');
+            if (ok) {
+              this.ordersSvc.fulfillOrder(o.shopDomain, o.orderId).subscribe({
+                next: (res) => {
+                  if (!res.ok) {
+                    alert('Fulfillment failed: ' + (res.error || 'Unknown error'));
+                  } else {
+                    // maybe refetch or update tag in UI
+                  }
+                },
+                error: (err) => {
+                  alert('Network error while fulfilling: ' + (err?.message || err));
+                }
+              });
+            }
+          }
+          
+        }
+      },
+      error: () => {
+        o.tags = prev;
+      }
+    });
+
+    sel.selectedIndex = 0;
+  }
+
+  onTagChange(o: Order, event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    if (!value) return;
+
+    const prev = [...(o.tags || [])];
+    const already = (o.tags || []).map(t => t.toLowerCase()).includes(value.toLowerCase());
+    if (!already) o.tags = [...(o.tags || []), value];
+
+    this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, value).subscribe({
+      next: r => { if (!r?.ok) o.tags = prev; },
+      error: () => { o.tags = prev; }
+    });
+
+    (event.target as HTMLSelectElement).value = '';
+  }
+
+  removeTag(o: Order, tag: string) {
+    if (tag.toLowerCase() === 'complete') {
+      if (!confirm('This order is Complete. Are you sure you want to remove that status?')) return;
+    }
+
+    const prev = [...o.tags];
+    o.tags = o.tags.filter(t => t.toLowerCase() !== tag.toLowerCase());
+
+    this.ordersSvc.removeTagRemote(o.shopDomain, o.orderId, tag).subscribe({
+      next: r => { if (!r?.ok) o.tags = prev; },
+      error: () => { o.tags = prev; }
+    });
+  }
+
+  getTags(tags?: string[]): string[] {
+    return (tags || []).map(t => t.trim()).filter(t => t.length > 0);
+  }
+
+  parseProps(json?: string): { name: string; value: any }[] {
+    if (!json) return [];
+    try { return JSON.parse(json); } catch { return []; }
+  }
+
+  private ensureItemsLoaded(o: Order & { items?: any[] }): Promise<void> {
+    if (o.items && o.items.length >= 0) return Promise.resolve();
+    return firstValueFrom(this.ordersSvc.getOrderItems(o.shopDomain, o.orderId))
+      .then(items => { o.items = items || []; })
+      .catch(() => {});
+  }
+
+  async onPrintAndProcess(o: Order & { items?: any[] }) {
+    const already = (o.tags || []).map(t => t.toLowerCase()).includes('processing');
+    const prev = [...(o.tags || [])];
+    if (!already) {
+      o.tags = [...(o.tags || []), 'Processing'];
+      this.ordersSvc.addTagRemote(o.shopDomain, o.orderId, 'Processing').subscribe({
+        next: r => { if (!r?.ok) o.tags = prev; },
+        error: () => { o.tags = prev; }
+      });
+    }
+
+    await this.ensureItemsLoaded(o);
+
+    this.selectedOrder = o;
+    this.showPrint = true;
+
+    setTimeout(async () => {
+      try {
+        await this.printModal?.printBundle({ invoice: 2, packing: 1 });
+      } finally {
+        this.onModalClosed();
+      }
+    }, 50);
+  }
+
+  // ========= BASIC HELPERS ====================================================
+  isExpress(o: Order): boolean {
+    return /\bexpress\b/i.test(o.shippingMethod || '');
+  }
+
+  isOld(o: Order): boolean {
+    const d = o.createdAt || o.updatedAt;
+    if (!d) return false;
+    const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+    const tags = (o.tags || []).join(',');
+    const shippedOrComplete = /\b(shipped|complete)\b/i.test(tags);
+    return ageDays > 7 && !shippedOrComplete;
+  }
+
+  // ========= FETCHING / PAGINATION ============================================
   ngOnInit() {}
 
   fetch() {
@@ -604,7 +598,7 @@ export class OrdersBoardComponent implements OnInit {
 
     this.ordersSvc.getSummary().subscribe({
       next: (s) => { this.summary = s; },
-      error: () => { /* ignore summary failure */ }
+      error: () => {}
     });
 
     this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
@@ -644,6 +638,28 @@ export class OrdersBoardComponent implements OnInit {
         });
       },
       error: () => { this.loading = false; }
+    });
+  }
+
+  exportShipday() {
+    this.exportSvc.shipday(this.exportShop, this.exportDate).subscribe({
+      next: res => {
+        const cd = res.headers.get('Content-Disposition') || '';
+        const match = /filename="?([^"]+)"?/.exec(cd);
+        const filename = match?.[1] || `shipday-${this.exportDate}.csv`;
+
+        const blob = new Blob([res.body!], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      },
+      error: () => alert('Failed to export Shipday CSV.')
     });
   }
 }

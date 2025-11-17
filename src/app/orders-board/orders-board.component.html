@@ -5,69 +5,59 @@
     <div>
       <h1>Orderly Print</h1>
       <p *ngIf="!loading">{{ summary?.total ?? orders.length }} orders loaded</p>
+
       <p *ngIf="loading">Loading orders…</p>
       <p *ngIf="error" class="error">{{ error }}</p>
     </div>
-
-    <div class="header-actions">
-      <button class="btn" (click)="printCards()">Print cards</button>
-      <button class="btn primary" (click)="fetch()" [disabled]="loading">
-        {{ loading ? 'Loading…' : 'Fetch orders' }}
-      </button>
-    </div>
+    <button class="btn" (click)="printCards()">Print cards</button>
+    <button class="btn primary" (click)="fetch()" [disabled]="loading">
+      {{ loading ? 'Loading…' : 'Fetch orders' }}
+    </button>
   </div>
 
-  <!-- Status counters (with filters) -->
+  <!-- Status counters -->
   <div class="status-bar">
+    <!-- All open -->
     <button
-      class="btn stat pill all"
-      [class.active-chip]="statusFilter==='all'"
+      class="btn stat pill"
+      [class.active-filter]="statusFilter==='all'"
       (click)="setStatusFilter('all')">
-      All
+      All open {{ openOrders.length }}
     </button>
 
     <button
       class="btn stat pill pending"
-      [class.active-chip]="statusFilter==='pending'"
-      style="background-color: violet; color: black"
+      style="background-color: violet ; color: black"
+      [class.active-filter]="statusFilter==='pending'"
       (click)="setStatusFilter('pending')">
       Pending {{ pendingCount }}
     </button>
 
     <button
       class="btn stat pill processing"
-      [class.active-chip]="statusFilter==='processing'"
-      style="background-color: cornflowerblue; color: black"
+      style="background-color: cornflowerblue ; color: black"
+      [class.active-filter]="statusFilter==='processing'"
       (click)="setStatusFilter('processing')">
       Processing {{ processingCount }}
     </button>
 
     <button
       class="btn stat pill shipped"
-      [class.active-chip]="statusFilter==='shipped'"
-      style="background-color: gold; color: black"
+      style="background-color: gold ; color: black"
+      [class.active-filter]="statusFilter==='shipped'"
       (click)="setStatusFilter('shipped')">
       Shipped {{ shippedCount }}
     </button>
 
-    <button
-      class="btn btn success stat pill complete"
-      [class.active-chip]="statusFilter==='complete'">
-      <span (click)="setStatusFilter('complete')" style="color:black">
-        Complete {{ completeCount }}
-      </span>
+    <button class="btn btn success stat pill complete" style="color: black;">
+      Complete {{ completeCount }}
     </button>
-
-    <button
-      class="btn btn link stat pill cancel"
-      [class.active-chip]="statusFilter==='cancel'">
-      <span (click)="setStatusFilter('cancel')" style="color:black">
-        Canceled {{ cancelCount }}
-      </span>
+    <button class="btn btn link stat pill cancel" style="color: black;">
+      Canceled {{ cancelCount }}
     </button>
   </div>
 
-  <!-- Express counters (informational only) -->
+  <!-- Express counters -->
   <div class="status-bar express-bar">
     <button class="btn pill express">Express Pending {{ expressPendingCount }}</button>
     <button class="btn pill express">Express Processing {{ expressProcessingCount }}</button>
@@ -76,7 +66,21 @@
     <button class="btn pill express">Express Canceled {{ expressCancelCount }}</button>
   </div>
 
-  <!-- Last 3 open orders -->
+  <!-- 🔍 Search row -->
+  <div class="search-row">
+    <input
+      class="search-input"
+      type="text"
+      [(ngModel)]="searchTerm"
+      placeholder="Search by order number or customer name..." />
+  </div>
+
+  <!-- List toolbar + last 3 -->
+  <div class="list-toolbar">
+    <b>List (Pending + Processing with a date)</b>
+    <span class="muted">Showing {{ listCardMax }} weekdays (Mon–Fri)</span>
+  </div>
+
   <div class="last-three" *ngIf="last3OpenOrders.length">
     <b>Last 3 open orders</b>
     <div class="chips">
@@ -87,32 +91,11 @@
     </div>
   </div>
 
-  <!-- Search -->
-  <div class="search-bar">
-    <input
-      type="text"
-      [(ngModel)]="searchTerm"
-      placeholder="Search by order # or customer name" />
-  </div>
-
-  <!-- Tabs (always in same position) -->
-  <div class="tabs tabs--main">
-    <button class="btn tab" [class.active]="activeTab==='orders'" (click)="activeTab='orders'">
-      Orders
-    </button>
-    <button class="btn tab" [class.active]="activeTab==='list'" (click)="activeTab='list'">
-      List
-    </button>
-    <button class="btn tab" [class.active]="activeTab==='done'" (click)="activeTab='done'">
-      Done
-    </button>
-  </div>
-
-  <!-- LIST TAB -->
+  <!-- List tab -->
   <div *ngIf="activeTab==='list'" class="list-wrap">
     <div class="list-toolbar">
       <b>List (Pending + Processing with a date)</b>
-      <span class="muted">Showing {{ listCardMax }} weekdays (Mon–Fri)</span>
+      <span class="muted">Showing up to {{ listCardMax }} non-empty days</span>
     </div>
 
     <div class="list-grid">
@@ -141,7 +124,32 @@
     </div>
   </div>
 
-  <!-- ORDERS TAB (open orders) -->
+  <br><br>
+  <div class="pager" *ngIf="summary?.total">
+    <button class="btn" (click)="loadMore()" [disabled]="loading || !nextCursor">
+      {{ loading ? 'Loading…' : (nextCursor ? 'Load more' : 'All loaded') }}
+    </button>
+    <span class="muted" style="margin-left:8px">
+      Showing {{ orders.length }} of {{ summary?.total }}
+    </span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs tabs--main">
+    <button class="btn tab" [class.active]="activeTab==='orders'" (click)="activeTab='orders'">
+      Orders
+    </button>
+
+    <button class="btn tab" [class.active]="activeTab==='list'" (click)="activeTab='list'">
+      List
+    </button>
+
+    <button class="btn tab" [class.active]="activeTab==='done'" (click)="activeTab='done'">
+      Done
+    </button>
+  </div>
+
+  <!-- Orders Table (open orders only) -->
   <div *ngIf="activeTab==='orders'" class="card table-wrapper" [hidden]="loading || !orders">
     <table>
       <thead>
@@ -159,7 +167,7 @@
       </thead>
 
       <tbody>
-        <tr *ngFor="let o of openOrders">
+        <tr *ngFor="let o of filteredOpenOrders">
           <!-- Order -->
           <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
             <div class="order-id">
@@ -195,10 +203,10 @@
           <!-- Products -->
           <td>
             <div *ngFor="let p of (o.items || [])" class="product-line">
-              <ng-container *ngIf="p.IMAGE; else noImgOpen">
+              <ng-container *ngIf="p.IMAGE; else noImg">
                 <img [src]="p.IMAGE" alt="" class="thumb" loading="lazy" />
               </ng-container>
-              <ng-template #noImgOpen>
+              <ng-template #noImg>
                 <div class="thumb thumb--blank"></div>
               </ng-template>
 
@@ -208,11 +216,11 @@
                 <span class="muted">x{{ p.QUANTITY }}</span>
 
                 <div class="muted">
-                  <ng-container *ngIf="o.currency; else plainPricesOpen">
+                  <ng-container *ngIf="o.currency; else plainPrices">
                     {{ (p.UNIT_PRICE ?? 0) | currency:o.currency:'symbol' }} × {{ p.QUANTITY }} =
                     {{ (p.LINE_TOTAL ?? (p.UNIT_PRICE ?? 0) * p.QUANTITY) | currency:o.currency:'symbol' }}
                   </ng-container>
-                  <ng-template #plainPricesOpen>
+                  <ng-template #plainPrices>
                     {{ (p.UNIT_PRICE ?? 0) | number:'1.2-2' }} × {{ p.QUANTITY }} =
                     {{ (p.LINE_TOTAL ?? (p.UNIT_PRICE ?? 0) * p.QUANTITY) | number:'1.2-2' }}
                     {{ p.CURRENCY || o.currency || '' }}
@@ -260,20 +268,20 @@
 
           <!-- Total -->
           <td class="num">
-            <ng-container *ngIf="o.currency; else plainTotalOpen">
+            <ng-container *ngIf="o.currency; else plainTotal">
               <b>{{ (o.total || 0) | currency:o.currency:'symbol' }}</b>
             </ng-container>
-            <ng-template #plainTotalOpen>
+            <ng-template #plainTotal>
               {{ o.total || 0 | number:'1.0-2' }} {{ o.currency || '' }}
             </ng-template>
           </td>
 
           <!-- Code Used -->
           <td class="muted">
-            <ng-container *ngIf="o.discountCodes && o.discountCodes.length > 0; else dashOpen">
+            <ng-container *ngIf="o.discountCodes && o.discountCodes.length > 0; else dash">
               {{ o.discountCodes.join(', ') }}
             </ng-container>
-            <ng-template #dashOpen>—</ng-template>
+            <ng-template #dash>—</ng-template>
           </td>
 
           <!-- Source -->
@@ -281,14 +289,22 @@
 
           <!-- Actions -->
           <td class="num">
-            <button class="btn primary" (click)="onPrintAndProcess(o)">🖨 Print</button>
-          </td>
+  <button class="btn primary" (click)="onPrintAndProcess(o)">🖨 Print</button>
+  <button
+    class="btn"
+    *ngIf="canEditDate(o)"
+    (click)="openDateModal(o)"
+    style="margin-left: 4px;">
+    📅 Set date
+  </button>
+</td>
+
         </tr>
       </tbody>
     </table>
   </div>
 
-  <!-- DONE TAB (complete + cancel) -->
+  <!-- Done Table (complete + cancel) -->
   <div *ngIf="activeTab==='done'" class="card table-wrapper" [hidden]="loading || !orders">
     <table>
       <thead>
@@ -306,7 +322,8 @@
       </thead>
 
       <tbody>
-        <tr *ngFor="let o of doneOrders">
+        <tr *ngFor="let o of filteredDoneOrders">
+
           <!-- Order -->
           <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
             <div class="order-id">
@@ -348,12 +365,10 @@
               <ng-template #noImgDone>
                 <div class="thumb thumb--blank"></div>
               </ng-template>
-
               <div class="product-text">
                 <span class="product-name">{{ p.TITLE }}</span>
                 <span *ngIf="p.VARIANT_TITLE" class="muted">({{ p.VARIANT_TITLE }})</span>
                 <span class="muted">x{{ p.QUANTITY }}</span>
-
                 <div class="muted">
                   <ng-container *ngIf="o.currency; else plainPricesDone">
                     {{ (p.UNIT_PRICE ?? 0) | currency:o.currency:'symbol' }} × {{ p.QUANTITY }} =
@@ -365,7 +380,6 @@
                     {{ p.CURRENCY || o.currency || '' }}
                   </ng-template>
                 </div>
-
                 <div class="muted" *ngFor="let prop of parseProps(p.PROPERTIES_JSON)">
                   • {{ prop.name }}: {{ prop.value }}
                 </div>
@@ -430,12 +444,12 @@
           <td class="num">
             <button class="btn primary" (click)="onPrintAndProcess(o)">🖨 Print</button>
           </td>
+          <button class="btn" *ngIf="canEditDate(o)" (click)="openDateModal(o)">📅 Set date</button>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <!-- Pager (same for all tabs, affects underlying orders list) -->
   <div class="pager" *ngIf="summary?.total">
     <button class="btn" (click)="loadMore()" [disabled]="loading || !nextCursor">
       {{ loading ? 'Loading…' : (nextCursor ? 'Load more' : 'All loaded') }}
@@ -466,4 +480,5 @@
     [show]="showPrint"
     (closed)="onModalClosed()">
   </app-print-modal>
+
 </div>

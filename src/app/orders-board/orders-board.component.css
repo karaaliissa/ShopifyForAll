@@ -407,3 +407,21 @@ tr:hover { background: #f9fafb; }
   color: #fff;
   border-color: #111827;
 }
+.search-row {
+  margin: 10px 0 16px 0;
+}
+
+.search-input {
+  width: 260px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+}
+
+/* highlight active status chips */
+.active-filter {
+  box-shadow: 0 0 0 1px #111827;
+  transform: translateY(-1px);
+}

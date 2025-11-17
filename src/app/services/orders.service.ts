@@ -333,6 +333,20 @@ removeTagRemote(shop: string, orderId: string | number, tag: string) {
     { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
   );
 }
+fulfillOrder(shop: string, orderId: string | number) {
+  const body = new URLSearchParams({
+    shop,
+    orderId: String(orderId),
+  }).toString();
+
+  return this.http.post<{ ok: boolean; error?: string; note?: string }>(
+    `${this.base}/api/orders/fulfill`,
+    body,
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  );
+}
+
+
 
 getOrdersPage(opts: GetOrdersOptions & { cursor?: string | null } = {}): Observable<OrdersPage> {
   let params = new HttpParams();
