@@ -334,11 +334,7 @@ removeTagRemote(shop: string, orderId: string | number, tag: string) {
   );
 }
 fulfillOrder(shop: string, orderId: string | number) {
-  const body = new URLSearchParams({
-    shop,
-    orderId: String(orderId),
-  }).toString();
-
+  const body = new URLSearchParams({ shop, orderId: String(orderId) }).toString();
   return this.http.post<{ ok: boolean; error?: string; note?: string }>(
     `${this.base}/api/orders/fulfill`,
     body,
