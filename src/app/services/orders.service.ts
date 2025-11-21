@@ -247,18 +247,42 @@ export class OrdersService {
       map(rows => this.clientFilter(rows, opts))
     );
   }
-  getOrderItems(shop: string, orderId: string | number): Observable<OrderItem[]> {
-    const key = `${shop}|${orderId}`;
-    if (this.itemsCache.has(key)) return of(this.itemsCache.get(key)!);
-    const params = new HttpParams().set('shop', shop).set('order_id', String(orderId));
+  // getOrderItems(shop: string, orderId: string | number): Observable<OrderItem[]> {
+  //   const key = `${shop}|${orderId}`;
+  //   if (this.itemsCache.has(key)) return of(this.itemsCache.get(key)!);
+  //   const params = new HttpParams().set('shop', shop).set('order_id', String(orderId));
 
-    return this.http.get<{ ok: boolean; items?: OrderItem[] }>(`${this.base}/api/items`, { params }).pipe(
+  //   return this.http.get<{ ok: boolean; items?: OrderItem[] }>(`${this.base}/api/items`, { params }).pipe(
+  //     catchError(() => of({ ok: false, items: [] })),
+  //     map(r => Array.isArray(r?.items) ? r.items : []),
+  //     map(list => { this.itemsCache.set(key, list); return list; }),
+  //     shareReplay(1)
+  //   );
+  // }
+  getOrderItems(shop: string, orderId: string | number): Observable<OrderItem[]> {
+  const key = `${shop}|${orderId}`;
+  if (this.itemsCache.has(key)) return of(this.itemsCache.get(key)!);
+
+  const params = new HttpParams()
+    .set('shop', shop)
+    .set('order_id', String(orderId));
+
+  return this.http
+    .get<{ ok: boolean; items?: OrderItem[] }>(
+      `${this.base}/api/order-items`,   // ⬅️ changed from /api/items
+      { params }
+    )
+    .pipe(
       catchError(() => of({ ok: false, items: [] })),
       map(r => Array.isArray(r?.items) ? r.items : []),
-      map(list => { this.itemsCache.set(key, list); return list; }),
+      map(list => {
+        this.itemsCache.set(key, list);
+        return list;
+      }),
       shareReplay(1)
     );
-  }
+}
+
 
   private clientFilter(rows: Order[], o?: GetOrdersOptions): Order[] {
     let r = [...rows];

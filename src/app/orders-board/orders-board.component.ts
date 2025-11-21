@@ -53,20 +53,30 @@ export class OrdersBoardComponent implements OnInit {
   private has(o: Order, t: string) { return o.tags.map(x => x.toLowerCase()).includes(t.toLowerCase()); }
   private isComplete(o: Order) { return this.has(o, 'complete'); }
 
-  constructor(private ordersSvc: OrdersService, private exportSvc: ExportService) {}
+  constructor(private ordersSvc: OrdersService, private exportSvc: ExportService) { }
 
+  private todayMidnight(): Date {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }
   // ========== PRINT CARDS (list tab) =========================================
   printCards() {
     const rows: Array<{ store: string, orderName: string, customer: string, city: string, date: string, note?: string }> = [];
     for (const day of this.dateCards) {
       for (const o of (day.orders || [])) {
+
+        const baseNote = (o.noteLocal || '').trim();
+        const autoNote = this.buildPrintNote(o);
+        const combinedNote = [baseNote, autoNote].filter(Boolean).join(' — ');
+
         rows.push({
           store: this.printStoreName,
           orderName: o.orderName || `#${o.orderId}`,
           customer: o.shipTo?.name || '',
           city: o.shipTo?.city || '',
           date: day.dateISO,
-          note: (o.noteLocal || '')
+          note: combinedNote
         });
       }
     }
@@ -126,10 +136,10 @@ export class OrdersBoardComponent implements OnInit {
 
   private escapeHtml(s: string) {
     return (s || '').toString()
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   // ── helpers: weekdays ────────────────────────────────────────────────────────
@@ -177,25 +187,59 @@ export class OrdersBoardComponent implements OnInit {
   }
 
   private deliverDateFor(o: Order): string | null {
-    if (o.deliverBy) return o.deliverBy;
+    const status = this.statusOf(o);
+    const today = this.todayMidnight();
 
-    const s = this.statusOf(o);
-    if (s !== 'pending' && s !== 'processing') return null;
-
-    const created = (o.createdAt instanceof Date && !isNaN(o.createdAt as any))
-      ? o.createdAt as Date
-      : (o.updatedAt || new Date());
-
-    if (this.isExpress(o)) {
-      const d = this.addBusinessDays(created, 2);
-      return this.ymd(d);
+    // Only auto-manage dates for pending/processing
+    if (status !== 'pending' && status !== 'processing') {
+      return o.deliverBy || null;
     }
-    if (this.isOutsideLebanon(o)) {
-      const d = this.addBusinessDays(created, 1);
-      return this.ymd(d);
+
+    // 1) If order already has a deliverBy date -> auto-shift if overdue
+    if (o.deliverBy) {
+      const d = this.fromYMD(o.deliverBy);
+      d.setHours(0, 0, 0, 0);
+
+      if (d < today) {
+        // overdue -> move to *tomorrow* (next business day)
+        const tomorrow = this.addBusinessDays(today, 1);
+        return this.ymd(tomorrow);
+      }
+
+      // still valid -> keep as is
+      return o.deliverBy;
     }
-    return null;
+
+    // 2) No deliverBy yet -> auto-assign
+
+    // base date = created or updated or today
+    const created =
+      (o.createdAt instanceof Date && !isNaN(o.createdAt as any))
+        ? o.createdAt as Date
+        : (o.updatedAt || new Date());
+
+    const base = new Date(created);
+    base.setHours(0, 0, 0, 0);
+
+    let auto: Date;
+
+    // Express OR outside Lebanon => next business day
+    if (this.isExpress(o) || this.isOutsideLebanon(o)) {
+      auto = this.addBusinessDays(base, 1);
+    } else {
+      // 🔵 Regular Lebanon orders => after 7 business days
+      auto = this.addBusinessDays(base, 7);
+    }
+
+    // If this auto date is already in the past (very old order), bump to tomorrow
+    if (auto < today) {
+      auto = this.addBusinessDays(today, 1);
+    }
+
+    return this.ymd(auto);
   }
+
+
 
   private startDayForCards(): Date {
     const dates: string[] = [];
@@ -212,7 +256,7 @@ export class OrdersBoardComponent implements OnInit {
       return this.nextBusinessDay(this.fromYMD(dates[0]));
     }
 
-    const today = this.nextBusinessDay(new Date(new Date().setHours(0,0,0,0)));
+    const today = this.nextBusinessDay(new Date(new Date().setHours(0, 0, 0, 0)));
     return today;
   }
 
@@ -255,11 +299,11 @@ export class OrdersBoardComponent implements OnInit {
       const s = this.statusOf(o);
       return s !== 'shipped' && s !== 'complete' && s !== 'cancel';
     });
-    open.sort((a,b) =>
+    open.sort((a, b) =>
       (a.createdAt?.getTime() ?? a.updatedAt?.getTime() ?? 0)
       - (b.createdAt?.getTime() ?? b.updatedAt?.getTime() ?? 0)
     );
-    return open.slice(0,3);
+    return open.slice(0, 3);
   }
 
   private beirutNowFrom(d: Date): Date {
@@ -271,7 +315,7 @@ export class OrdersBoardComponent implements OnInit {
     const hr = local.getHours();
     const base = new Date(local);
     base.setDate(base.getDate() + (hr < 12 ? 1 : 2));
-    return base.toISOString().slice(0,10);
+    return base.toISOString().slice(0, 10);
   }
 
   canEditDate(o: Order) {
@@ -314,7 +358,7 @@ export class OrdersBoardComponent implements OnInit {
       },
       error: () => {
         o.deliverBy = prevDate;
-        this.ordersSvc.setNoteLocal(o.shopDomain, o.orderId, o.noteLocal).subscribe({ error: ()=>{} });
+        this.ordersSvc.setNoteLocal(o.shopDomain, o.orderId, o.noteLocal).subscribe({ error: () => { } });
       }
     });
 
@@ -332,9 +376,9 @@ export class OrdersBoardComponent implements OnInit {
 
   // ---- Canonical status per order ----
   statusOf(o: Order): 'pending' | 'processing' | 'shipped' | 'complete' | 'cancel' {
-    if (this.has(o, 'complete'))   return 'complete';
-    if (this.has(o, 'cancel'))     return 'cancel';
-    if (this.has(o, 'shipped'))    return 'shipped';
+    if (this.has(o, 'complete')) return 'complete';
+    if (this.has(o, 'cancel')) return 'cancel';
+    if (this.has(o, 'shipped')) return 'shipped';
     if (this.has(o, 'processing')) return 'processing';
 
     const f = (o.fulfillmentStatus || '').toString().trim().toLowerCase();
@@ -349,17 +393,17 @@ export class OrdersBoardComponent implements OnInit {
   }
 
   // 🔢 Counters
-  get pendingCount()    { return this.summary?.pending    ?? this.orders.filter(o => this.statusOf(o) === 'pending').length; }
+  get pendingCount() { return this.summary?.pending ?? this.orders.filter(o => this.statusOf(o) === 'pending').length; }
   get processingCount() { return this.summary?.processing ?? this.orders.filter(o => this.statusOf(o) === 'processing').length; }
-  get shippedCount()    { return this.summary?.shipped    ?? this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
-  get completeCount()   { return this.summary?.complete   ?? this.orders.filter(o => this.statusOf(o) === 'complete').length; }
-  get cancelCount()     { return this.summary?.cancel     ?? this.orders.filter(o => this.statusOf(o) === 'cancel').length; }
+  get shippedCount() { return this.summary?.shipped ?? this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
+  get completeCount() { return this.summary?.complete ?? this.orders.filter(o => this.statusOf(o) === 'complete').length; }
+  get cancelCount() { return this.summary?.cancel ?? this.orders.filter(o => this.statusOf(o) === 'cancel').length; }
 
-  get expressPendingCount()    { return this.summary?.expressPending    ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'pending')).length; }
+  get expressPendingCount() { return this.summary?.expressPending ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'pending')).length; }
   get expressProcessingCount() { return this.summary?.expressProcessing ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'processing')).length; }
-  get expressShippedCount()    { return this.summary?.expressShipped    ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'shipped')).length; }
-  get expressCompleteCount()   { return this.summary?.expressComplete   ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'complete')).length; }
-  get expressCancelCount()     { return this.summary?.expressCancel     ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'cancel')).length; }
+  get expressShippedCount() { return this.summary?.expressShipped ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'shipped')).length; }
+  get expressCompleteCount() { return this.summary?.expressComplete ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'complete')).length; }
+  get expressCancelCount() { return this.summary?.expressCancel ?? this.orders.filter(o => this.isExpress(o) && this.statusIs(o, 'cancel')).length; }
 
   // status pill
   fulfillmentLabel(o: Order): string {
@@ -437,7 +481,7 @@ export class OrdersBoardComponent implements OnInit {
     const hasCancel = this.has(o, 'cancel');
 
     if (hasComplete) return [];
-    if (hasShipped)  return ['Complete'];
+    if (hasShipped) return ['Complete'];
     if (hasProcessing) return ['Shipped', 'Cancel'];
     if (hasCancel) return [];
     return ['Processing', 'Cancel'];
@@ -491,7 +535,7 @@ export class OrdersBoardComponent implements OnInit {
               });
             }
           }
-          
+
         }
       },
       error: () => {
@@ -545,7 +589,7 @@ export class OrdersBoardComponent implements OnInit {
     if (o.items && o.items.length >= 0) return Promise.resolve();
     return firstValueFrom(this.ordersSvc.getOrderItems(o.shopDomain, o.orderId))
       .then(items => { o.items = items || []; })
-      .catch(() => {});
+      .catch(() => { });
   }
 
   async onPrintAndProcess(o: Order & { items?: any[] }) {
@@ -586,9 +630,37 @@ export class OrdersBoardComponent implements OnInit {
     const shippedOrComplete = /\b(shipped|complete)\b/i.test(tags);
     return ageDays > 7 && !shippedOrComplete;
   }
+  private buildPrintNote(o: Order): string {
+    const parts: string[] = [];
+
+    // 1) Express flag
+    if (this.isExpress(o)) {
+      parts.push('Express');
+    }
+
+    // 2) Outside Lebanon -> add country
+    const country = (o.shipTo?.country || '').trim();
+    if (country && country.toLowerCase() !== 'lebanon') {
+      parts.push(country);
+    }
+
+    // 3) Old order: more than 10 days, still pending/processing
+    const d = o.createdAt || o.updatedAt;
+    if (d instanceof Date && !isNaN(d.getTime())) {
+      const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+      const s = this.statusOf(o);
+      if (ageDays > 10 && (s === 'pending' || s === 'processing')) {
+        parts.push('Old order (10+ days, not shipped)');
+        // if you want EXACT wording like you wrote:
+        // parts.push('old order (ordered more than 10 days ago and not shipped yet)');
+      }
+    }
+
+    return parts.join(' | ');
+  }
 
   // ========= FETCHING / PAGINATION ============================================
-  ngOnInit() {}
+  ngOnInit() { }
 
   fetch() {
     this.loading = true;
@@ -598,7 +670,7 @@ export class OrdersBoardComponent implements OnInit {
 
     this.ordersSvc.getSummary().subscribe({
       next: (s) => { this.summary = s; },
-      error: () => {}
+      error: () => { }
     });
 
     this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
