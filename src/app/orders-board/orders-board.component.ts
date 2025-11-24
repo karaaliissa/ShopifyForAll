@@ -190,74 +190,84 @@ export class OrdersBoardComponent implements OnInit {
     const status = this.statusOf(o);
     const today = this.todayMidnight();
 
-    // Only auto-manage dates for pending/processing
+    // Only manage dates for pending/processing
     if (status !== 'pending' && status !== 'processing') {
       return o.deliverBy || null;
     }
 
-    // 1) If order already has a deliverBy date -> auto-shift if overdue
+    const isOld = this.isOld(o);
+    const isExpress = this.isExpress(o);
+    const isIntl = this.isOutsideLebanon(o);
+
+    // --- 1) Already has a deliver date ---
     if (o.deliverBy) {
       const d = this.fromYMD(o.deliverBy);
       d.setHours(0, 0, 0, 0);
 
       if (d < today) {
-        // overdue -> move to *tomorrow* (next business day)
-        const tomorrow = this.addBusinessDays(today, 1);
-        return this.ymd(tomorrow);
+        // Overdue → move depending on category
+        if (isOld) {
+          const future = this.addBusinessDays(today, 10);
+          return this.ymd(future);
+        } else {
+          const tomorrow = this.addBusinessDays(today, 1);
+          return this.ymd(tomorrow);
+        }
       }
 
-      // still valid -> keep as is
       return o.deliverBy;
     }
 
-    // 2) No deliverBy yet -> auto-assign
-
-    // base date = created or updated or today
-    const created =
-      (o.createdAt instanceof Date && !isNaN(o.createdAt as any))
-        ? o.createdAt as Date
-        : (o.updatedAt || new Date());
-
+    // --- 2) No deliver date yet → auto assign ---
+    const created = o.createdAt || o.updatedAt || new Date();
     const base = new Date(created);
     base.setHours(0, 0, 0, 0);
 
     let auto: Date;
 
-    // Express OR outside Lebanon => next business day
-    if (this.isExpress(o) || this.isOutsideLebanon(o)) {
+    if (isOld) {
+      // old → 10 business days
+      auto = this.addBusinessDays(today, 10);
+    } else if (isExpress || isIntl) {
+      // express / Intl → next business day
       auto = this.addBusinessDays(base, 1);
     } else {
-      // 🔵 Regular Lebanon orders => after 7 business days
+      // regular → 7 business days
       auto = this.addBusinessDays(base, 7);
     }
 
-    // If this auto date is already in the past (very old order), bump to tomorrow
+    // if still in the past → bump again
     if (auto < today) {
-      auto = this.addBusinessDays(today, 1);
+      auto = isOld
+        ? this.addBusinessDays(today, 10)
+        : this.addBusinessDays(today, 1);
     }
 
     return this.ymd(auto);
   }
+  private listCategoryRank(o: Order & { isExpress: boolean }): number {
+    if (o.isExpress) return 0;
+
+    if (!o.isExpress && this.isOutsideLebanon(o)) return 1;
+
+    const hasNote =
+      !!(o as any).noteLocal ||
+      !!o.note ||
+      (o.noteAttributes && o.noteAttributes.length > 0);
+    if (hasNote) return 2;
+
+    if (this.isOld(o)) return 3;
+
+    return 4;
+  }
+
 
 
 
   private startDayForCards(): Date {
-    const dates: string[] = [];
-
-    for (const o of (this.orders || [])) {
-      const s = this.statusOf(o);
-      if (s !== 'pending' && s !== 'processing') continue;
-      const d = this.deliverDateFor(o);
-      if (d) dates.push(d);
-    }
-
-    if (dates.length) {
-      dates.sort();
-      return this.nextBusinessDay(this.fromYMD(dates[0]));
-    }
-
-    const today = this.nextBusinessDay(new Date(new Date().setHours(0, 0, 0, 0)));
-    return today;
+    const today = this.todayMidnight();
+    // أول كرت في اللست يكون دائماً "غداً" (أقرب يوم عمل)
+    return this.addBusinessDays(today, 1);
   }
 
   // ── dateCards: 20 *weekdays* continuous ─────────────────────────────────────
@@ -282,10 +292,14 @@ export class OrdersBoardComponent implements OnInit {
     while (out.length < this.listCardMax) {
       if (!this.isWeekend(d)) {
         const iso = this.ymd(d);
-        const orders = (byDay.get(iso) || []).sort((a, b) =>
-          (a.orderName || a.orderId).localeCompare(b.orderName || b.orderId)
-        );
+        const orders = (byDay.get(iso) || []).sort((a, b) => {
+          const ra = this.listCategoryRank(a);
+          const rb = this.listCategoryRank(b);
+          if (ra !== rb) return ra - rb;
+          return (a.orderName || a.orderId).localeCompare(b.orderName || b.orderId);
+        });
         out.push({ dateISO: iso, dateLabel: this.dateLabelFromISO(iso), orders });
+
       }
       d = new Date(d);
       d.setDate(d.getDate() + 1);
@@ -625,11 +639,14 @@ export class OrdersBoardComponent implements OnInit {
   isOld(o: Order): boolean {
     const d = o.createdAt || o.updatedAt;
     if (!d) return false;
+
     const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-    const tags = (o.tags || []).join(',');
-    const shippedOrComplete = /\b(shipped|complete)\b/i.test(tags);
-    return ageDays > 7 && !shippedOrComplete;
+    const shippedOrComplete = /\b(shipped|complete)\b/i.test((o.tags || []).join(','));
+
+    // old = more than 10 days and still not shipped/complete
+    return ageDays > 10 && !shippedOrComplete;
   }
+
   private buildPrintNote(o: Order): string {
     const parts: string[] = [];
 
