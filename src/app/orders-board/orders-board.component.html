@@ -18,34 +18,22 @@
   <!-- Status counters -->
   <div class="status-bar">
     <!-- All open -->
-    <button
-      class="btn stat pill"
-      [class.active-filter]="statusFilter==='all'"
-      (click)="setStatusFilter('all')">
+    <button class="btn stat pill" [class.active-filter]="statusFilter==='all'" (click)="setStatusFilter('all')">
       All open {{ openOrders.length }}
     </button>
 
-    <button
-      class="btn stat pill pending"
-      style="background-color: violet ; color: black"
-      [class.active-filter]="statusFilter==='pending'"
-      (click)="setStatusFilter('pending')">
+    <button class="btn stat pill pending" style="background-color: violet ; color: black"
+      [class.active-filter]="statusFilter==='pending'" (click)="setStatusFilter('pending')">
       Pending {{ pendingCount }}
     </button>
 
-    <button
-      class="btn stat pill processing"
-      style="background-color: cornflowerblue ; color: black"
-      [class.active-filter]="statusFilter==='processing'"
-      (click)="setStatusFilter('processing')">
+    <button class="btn stat pill processing" style="background-color: cornflowerblue ; color: black"
+      [class.active-filter]="statusFilter==='processing'" (click)="setStatusFilter('processing')">
       Processing {{ processingCount }}
     </button>
 
-    <button
-      class="btn stat pill shipped"
-      style="background-color: gold ; color: black"
-      [class.active-filter]="statusFilter==='shipped'"
-      (click)="setStatusFilter('shipped')">
+    <button class="btn stat pill shipped" style="background-color: gold ; color: black"
+      [class.active-filter]="statusFilter==='shipped'" (click)="setStatusFilter('shipped')">
       Shipped {{ shippedCount }}
     </button>
 
@@ -68,10 +56,7 @@
 
   <!-- 🔍 Search row -->
   <div class="search-row">
-    <input
-      class="search-input"
-      type="text"
-      [(ngModel)]="searchTerm"
+    <input class="search-input" type="text" [(ngModel)]="searchTerm"
       placeholder="Search by order number or customer name..." />
   </div>
 
@@ -104,10 +89,8 @@
           <div class="date-title">{{ day.dateLabel }}</div>
         </div>
 
-        <div class="order-chip"
-             *ngFor="let o of day.orders"
-             [class.is-express]="o.isExpress"
-             [class.is-outside]="!o.isExpress && isOutsideLebanon(o)">
+        <div class="order-chip" *ngFor="let o of day.orders" [class.is-express]="o.isExpress"
+          [class.is-outside]="!o.isExpress && isOutsideLebanon(o)">
           <span class="order-id">{{ o.orderName || o.orderId }}</span>
           <span class="muted">
             — {{ o.shipTo?.name || '—' }}
@@ -171,9 +154,7 @@
           <!-- Order -->
           <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
             <div class="order-id">
-              <div class="link"
-                   [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }"
-                   (click)="openPrintModal(o)">
+              <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }" (click)="openPrintModal(o)">
                 {{ o.orderName || o.orderId }}
               </div>
               <div class="customer">{{ o.shipTo?.name }}</div>
@@ -251,7 +232,7 @@
 
           <!-- Method / Notes -->
           <td [ngClass]="{ 'text-express': isExpress(o), 'text-old': isOld(o) }"
-              [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+            [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
             {{ o.shippingMethod || '—' }}
             <span *ngIf="isOld(o)" class="ship ship-old">OLD ORDER</span>
 
@@ -289,15 +270,11 @@
 
           <!-- Actions -->
           <td class="num">
-  <button class="btn primary" (click)="onPrintAndProcess(o)">🖨 Print</button>
-  <button
-    class="btn"
-    *ngIf="canEditDate(o)"
-    (click)="openDateModal(o)"
-    style="margin-left: 4px;">
-    📅 Set date
-  </button>
-</td>
+            <button class="btn primary" (click)="onPrintAndProcess(o)">🖨 Print</button>
+            <button class="btn" *ngIf="canEditDate(o)" (click)="openDateModal(o)" style="margin-left: 4px;">
+              📅 Set date
+            </button>
+          </td>
 
         </tr>
       </tbody>
@@ -327,9 +304,7 @@
           <!-- Order -->
           <td [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
             <div class="order-id">
-              <div class="link"
-                   [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }"
-                   (click)="openPrintModal(o)">
+              <div class="link" [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }" (click)="openPrintModal(o)">
                 {{ o.orderName || o.orderId }}
               </div>
               <div class="customer">{{ o.shipTo?.name }}</div>
@@ -404,7 +379,7 @@
 
           <!-- Method / Notes -->
           <td [ngClass]="{ 'text-express': isExpress(o), 'text-old': isOld(o) }"
-              [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
+            [ngStyle]="{ 'color': isExpress(o) ? 'red' : '' }">
             {{ o.shippingMethod || '—' }}
             <span *ngIf="isOld(o)" class="ship ship-old">OLD ORDER</span>
 
@@ -464,21 +439,12 @@
   </div>
 
   <!-- Modals -->
-  <app-delivery-date-modal
-    *ngIf="showDateModal"
-    [show]="showDateModal"
-    [order]="dateModalOrder"
-    [initialDate]="initialDeliverBy"
-    [initialNote]="initialNote"
-    (close)="closeDateModal()"
+  <app-delivery-date-modal *ngIf="showDateModal" [show]="showDateModal" [order]="dateModalOrder"
+    [initialDate]="initialDeliverBy" [initialNote]="initialNote" (close)="closeDateModal()"
     (save)="saveDateModal($event)">
   </app-delivery-date-modal>
 
-  <app-print-modal
-    *ngIf="showPrint"
-    [order]="selectedOrder"
-    [show]="showPrint"
-    (closed)="onModalClosed()">
+  <app-print-modal *ngIf="showPrint" [order]="selectedOrder" [show]="showPrint" (closed)="onModalClosed()">
   </app-print-modal>
 
 </div>

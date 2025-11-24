@@ -62,47 +62,51 @@ export class OrdersBoardComponent implements OnInit {
   }
   // ========== PRINT CARDS (list tab) =========================================
   printCards() {
-  const rows: Array<{ store: string, orderName: string, customer: string, city: string, date: string, note?: string }> = [];
+    const rows: Array<{ store: string, orderName: string, customer: string, city: string, date: string, note?: string, status: string }> = [];
 
-  for (const day of this.dateCards) {
-    for (const o of (day.orders || [])) {
 
-      // لا نطبع إلا Express / International / Notes — بدون OLD
-      if (!this.shouldPrintCard(o)) continue;
+    for (const day of this.dateCards) {
+      for (const o of (day.orders || [])) {
 
-      const baseNote = (o.noteLocal || '').trim();
-      const autoNote = this.buildPrintNote(o);
+        // لا نطبع إلا Express / International / Notes — بدون OLD
+        if (!this.shouldPrintCard(o)) continue;
+        const status = this.getPrintStatus(o);
+        if (!status) continue;  // ← مانع الطباعة
+        const baseNote = (o.noteLocal || '').trim();
+        const autoNote = this.buildPrintNote(o);
 
-      // نجمع الملاحظات (local + auto) و نشيل التكرار
-      const noteParts: string[] = [];
-      if (baseNote) noteParts.push(baseNote);
-      if (autoNote) noteParts.push(autoNote);
+        // نجمع الملاحظات (local + auto) و نشيل التكرار
+        const noteParts: string[] = [];
+        if (baseNote) noteParts.push(baseNote);
+        if (autoNote) noteParts.push(autoNote);
 
-      const seen = new Set<string>();
-      const combinedNote = noteParts.filter(p => {
-        const key = p.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      }).join(' — ');
+        const seen = new Set<string>();
+        const combinedNote = noteParts.filter(p => {
+          const key = p.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }).join(' — ');
 
-      rows.push({
-        store: this.printStoreName,
-        orderName: o.orderName || `#${o.orderId}`,
-        customer: o.shipTo?.name || '',
-        city: o.shipTo?.city || '',
-        date: day.dateISO,
-        note: combinedNote
-      });
+        rows.push({
+          store: this.printStoreName,
+          orderName: o.orderName || `#${o.orderId}`,
+          customer: o.shipTo?.name || '',
+          city: o.shipTo?.city || '',
+          date: day.dateISO,
+          note: combinedNote,
+          status: status
+        });
+
+      }
     }
-  }
 
-  if (!rows.length) {
-    alert('No dated orders to print.');
-    return;
-  }
+    if (!rows.length) {
+      alert('No dated orders to print.');
+      return;
+    }
 
-  // ... باقي الكود تبع window.open نفس ما هو ...
+    // ... باقي الكود تبع window.open نفس ما هو ...
 
 
     const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
@@ -132,16 +136,32 @@ export class OrdersBoardComponent implements OnInit {
       <div class="last3"><b>Last 5 open orders:</b> ${lastThree || '(none)'}</div>
     `;
 
-    const tableHead = `<table><thead><tr><th>Order</th><th>Customer</th><th>City</th><th>Deliver Date</th><th>Note (local)</th></tr></thead><tbody>`;
+    const tableHead = `
+<table>
+  <thead>
+    <tr>
+      <th>Order</th>
+      <th>Status</th>
+      <th>Customer</th>
+      <th>City</th>
+      <th>Deliver Date</th>
+      <th>Note (local)</th>
+    </tr>
+  </thead>
+  <tbody>
+`;
+
     const tableRows = rows.map(r => `
-      <tr>
-        <td><strong>${this.escapeHtml(r.orderName)}</strong><div class="small">${this.escapeHtml(r.store)}</div></td>
-        <td>${this.escapeHtml(r.customer)}</td>
-        <td>${this.escapeHtml(r.city)}</td>
-        <td>${this.escapeHtml(r.date)}</td>
-        <td class="note">${this.escapeHtml(r.note || '')}</td>
-      </tr>
-    `).join('');
+  <tr>
+    <td><strong>${this.escapeHtml(r.orderName)}</strong><div class="small">${this.escapeHtml(r.store)}</div></td>
+    <td>${this.escapeHtml(r.status)}</td>
+    <td>${this.escapeHtml(r.customer)}</td>
+    <td>${this.escapeHtml(r.city)}</td>
+    <td>${this.escapeHtml(r.date)}</td>
+    <td class="note">${this.escapeHtml(r.note || '')}</td>
+  </tr>
+`).join('');
+
     const tableFooter = `</tbody></table>`;
 
     win.document.write(`<html><head><title>Print delivery cards</title>${style}</head><body>${head}${tableHead}${tableRows}${tableFooter}</body></html>`);
@@ -264,32 +284,32 @@ export class OrdersBoardComponent implements OnInit {
 
     return this.ymd(auto);
   }
-private listCategoryRank(o: Order & { isExpress: boolean }): number {
-  // 0 = Express
-  if (o.isExpress) return 0;
+  private listCategoryRank(o: Order & { isExpress: boolean }): number {
+    // 0 = Express
+    if (o.isExpress) return 0;
 
-  // 1 = International (outside Lebanon)
-  if (!o.isExpress && this.isOutsideLebanon(o)) return 1;
+    // 1 = International (outside Lebanon)
+    if (!o.isExpress && this.isOutsideLebanon(o)) return 1;
 
-  const isExchange = this.isExchangeOrder(o);
+    const isExchange = this.isExchangeOrder(o);
 
-  // 2 = orders with notes (but NOT exchange)
-  const hasNote =
-    !!(o as any).noteLocal ||
-    !!o.note ||
-    (o.noteAttributes && o.noteAttributes.length > 0);
+    // 2 = orders with notes (but NOT exchange)
+    const hasNote =
+      !!(o as any).noteLocal ||
+      !!o.note ||
+      (o.noteAttributes && o.noteAttributes.length > 0);
 
-  if (hasNote && !isExchange) return 2;
+    if (hasNote && !isExchange) return 2;
 
-  // 3 = Exchange orders (always after other notes)
-  if (isExchange) return 3;
+    // 3 = Exchange orders (always after other notes)
+    if (isExchange) return 3;
 
-  // 4 = OLD orders
-  if (this.isOld(o)) return 4;
+    // 4 = OLD orders
+    if (this.isOld(o)) return 4;
 
-  // 5 = everything else
-  return 5;
-}
+    // 5 = everything else
+    return 5;
+  }
 
 
 
@@ -338,46 +358,63 @@ private listCategoryRank(o: Order & { isExpress: boolean }): number {
 
     return out;
   }
-private shouldPrintCard(o: Order & { noteLocal?: string | null }): boolean {
-  // Express
-  const isExpress = this.isExpress(o);
+  private shouldPrintCard(o: Order & { noteLocal?: string | null }): boolean {
+    // Express
+    const isExpress = this.isExpress(o);
 
-  // International (خارج لبنان)
-  const isIntl = this.isOutsideLebanon(o);
+    // International (خارج لبنان)
+    const isIntl = this.isOutsideLebanon(o);
 
-  // Notes (من Shopify NOTE أو من Google Sheets NOTE_LOCAL أو noteAttributes)
-  const hasNote =
-    !!(o.noteLocal && o.noteLocal.toString().trim()) ||
-    !!(o.note && o.note.toString().trim()) ||
-    (!!o.noteAttributes && o.noteAttributes.length > 0);
+    // Notes (من Shopify NOTE أو من Google Sheets NOTE_LOCAL أو noteAttributes)
+    const hasNote =
+      !!(o.noteLocal && o.noteLocal.toString().trim()) ||
+      !!(o.note && o.note.toString().trim()) ||
+      (!!o.noteAttributes && o.noteAttributes.length > 0);
 
-  // Old order
-  const isOld = this.isOld(o);
+    // Old order
+    const isOld = this.isOld(o);
 
-  // Exchange: من التاغز أو من أي نوت
-  const tagsText = (o.tags || []).join(' ').toLowerCase();
-  const notesText = ((o.noteLocal || '') + ' ' + (o.note || '')).toLowerCase();
-  const isExchange =
-    tagsText.includes('exchange') || notesText.includes('exchange');
+    // Exchange: من التاغز أو من أي نوت
+    const tagsText = (o.tags || []).join(' ').toLowerCase();
+    const notesText = ((o.noteLocal || '') + ' ' + (o.note || '')).toLowerCase();
+    const isExchange =
+      tagsText.includes('exchange') || notesText.includes('exchange');
 
-  // 🔴 شرط خاص للـ OLD:
-  // إذا الطلب Old وما عنده أي note → لا نطبعه أبداً
-  if (isOld && !hasNote) {
-    return false;
+    // 🔴 شرط خاص للـ OLD:
+    // إذا الطلب Old وما عنده أي note → لا نطبعه أبداً
+    if (isOld && !hasNote) {
+      return false;
+    }
+
+    // ✅ غير هيك: نطبعه إذا كان Express أو International أو عنده Notes أو Exchange
+    return isExpress || isIntl || hasNote || isExchange;
   }
 
-  // ✅ غير هيك: نطبعه إذا كان Express أو International أو عنده Notes أو Exchange
-  return isExpress || isIntl || hasNote || isExchange;
-}
+  private getPrintStatus(o: Order): string | null {
+    const tags = (o.tags || []).map(t => t.toLowerCase());
 
+    const hasProcessing = tags.includes('processing');
+    const hasShipped = tags.includes('shipped');
+    const hasComplete = tags.includes('complete');
+    const hasCancel = tags.includes('cancel');
 
+    // ❌ Do NOT print these orders at all
+    if (hasShipped || hasComplete || hasCancel) return null;
+    if (hasProcessing && hasShipped) return null;
 
-private isExchangeOrder(o: Order): boolean {
-  // tag "Exchange" OR sourceName == "Exchange"
-  const sourceIsExchange = (o.sourceName || '').trim().toLowerCase() === 'exchange';
-  const tagIsExchange = this.has(o, 'exchange'); // uses your private has()
-  return sourceIsExchange || tagIsExchange;
-}
+    // ✔ Processing only
+    if (hasProcessing) return 'Processing';
+
+    // ✔ Default if no tags → Pending
+    return 'Pending';
+  }
+
+  private isExchangeOrder(o: Order): boolean {
+    // tag "Exchange" OR sourceName == "Exchange"
+    const sourceIsExchange = (o.sourceName || '').trim().toLowerCase() === 'exchange';
+    const tagIsExchange = this.has(o, 'exchange'); // uses your private has()
+    return sourceIsExchange || tagIsExchange;
+  }
   get last3OpenOrders(): Order[] {
     const open = (this.orders || []).filter(o => {
       const s = this.statusOf(o);
@@ -717,45 +754,45 @@ private isExchangeOrder(o: Order): boolean {
     return ageDays > 10 && !shippedOrComplete;
   }
 
-private buildPrintNote(o: Order): string {
-  const parts: string[] = [];
+  private buildPrintNote(o: Order): string {
+    const parts: string[] = [];
 
-  // 0) إذا الـ NOTE من Shopify فيه كلمة Exchange
-  const shopifyNote = (o.note || '').trim();
-  if (shopifyNote && /exchange/i.test(shopifyNote)) {
-    parts.push('Exchange');
-  }
-
-  // 1) Express flag
-  if (this.isExpress(o)) {
-    parts.push('Express');
-  }
-
-  // 2) Outside Lebanon -> add country
-  const country = (o.shipTo?.country || '').trim();
-  if (country && country.toLowerCase() !== 'lebanon') {
-    parts.push(country);
-  }
-
-  // 3) Old order: more than 10 days, still pending/processing
-  const d = o.createdAt || o.updatedAt;
-  if (d instanceof Date && !isNaN(d.getTime())) {
-    const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-    const s = this.statusOf(o);
-    if (ageDays > 10 && (s === 'pending' || s === 'processing')) {
-      parts.push('Old order (10+ days, not shipped)');
+    // 0) إذا الـ NOTE من Shopify فيه كلمة Exchange
+    const shopifyNote = (o.note || '').trim();
+    if (shopifyNote && /exchange/i.test(shopifyNote)) {
+      parts.push('Exchange');
     }
-  }
 
-  // إزالة التكرار
-  const seen = new Set<string>();
-  return parts.filter(p => {
-    const key = p.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).join(' | ');
-}
+    // 1) Express flag
+    if (this.isExpress(o)) {
+      parts.push('Express');
+    }
+
+    // 2) Outside Lebanon -> add country
+    const country = (o.shipTo?.country || '').trim();
+    if (country && country.toLowerCase() !== 'lebanon') {
+      parts.push(country);
+    }
+
+    // 3) Old order: more than 10 days, still pending/processing
+    const d = o.createdAt || o.updatedAt;
+    if (d instanceof Date && !isNaN(d.getTime())) {
+      const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+      const s = this.statusOf(o);
+      if (ageDays > 10 && (s === 'pending' || s === 'processing')) {
+        parts.push('Old order (10+ days, not shipped)');
+      }
+    }
+
+    // إزالة التكرار
+    const seen = new Set<string>();
+    return parts.filter(p => {
+      const key = p.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).join(' | ');
+  }
 
 
   // ========= FETCHING / PAGINATION ============================================
