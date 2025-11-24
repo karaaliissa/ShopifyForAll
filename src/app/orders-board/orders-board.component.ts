@@ -62,29 +62,48 @@ export class OrdersBoardComponent implements OnInit {
   }
   // ========== PRINT CARDS (list tab) =========================================
   printCards() {
-    const rows: Array<{ store: string, orderName: string, customer: string, city: string, date: string, note?: string }> = [];
-    for (const day of this.dateCards) {
-      for (const o of (day.orders || [])) {
+  const rows: Array<{ store: string, orderName: string, customer: string, city: string, date: string, note?: string }> = [];
 
-        const baseNote = (o.noteLocal || '').trim();
-        const autoNote = this.buildPrintNote(o);
-        const combinedNote = [baseNote, autoNote].filter(Boolean).join(' — ');
+  for (const day of this.dateCards) {
+    for (const o of (day.orders || [])) {
 
-        rows.push({
-          store: this.printStoreName,
-          orderName: o.orderName || `#${o.orderId}`,
-          customer: o.shipTo?.name || '',
-          city: o.shipTo?.city || '',
-          date: day.dateISO,
-          note: combinedNote
-        });
-      }
+      // لا نطبع إلا Express / International / Notes — بدون OLD
+      if (!this.shouldPrintCard(o)) continue;
+
+      const baseNote = (o.noteLocal || '').trim();
+      const autoNote = this.buildPrintNote(o);
+
+      // نجمع الملاحظات (local + auto) و نشيل التكرار
+      const noteParts: string[] = [];
+      if (baseNote) noteParts.push(baseNote);
+      if (autoNote) noteParts.push(autoNote);
+
+      const seen = new Set<string>();
+      const combinedNote = noteParts.filter(p => {
+        const key = p.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).join(' — ');
+
+      rows.push({
+        store: this.printStoreName,
+        orderName: o.orderName || `#${o.orderId}`,
+        customer: o.shipTo?.name || '',
+        city: o.shipTo?.city || '',
+        date: day.dateISO,
+        note: combinedNote
+      });
     }
+  }
 
-    if (!rows.length) {
-      alert('No dated orders to print.');
-      return;
-    }
+  if (!rows.length) {
+    alert('No dated orders to print.');
+    return;
+  }
+
+  // ... باقي الكود تبع window.open نفس ما هو ...
+
 
     const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
     if (!win) { alert('Popup blocked. Allow popups to print.'); return; }
@@ -110,7 +129,7 @@ export class OrdersBoardComponent implements OnInit {
     const head = `
       <h1>Delivery cards — ${this.printStoreName}</h1>
       <p class="small">Printed: ${new Date().toLocaleString()}</p>
-      <div class="last3"><b>Last 3 open orders:</b> ${lastThree || '(none)'}</div>
+      <div class="last3"><b>Last 5 open orders:</b> ${lastThree || '(none)'}</div>
     `;
 
     const tableHead = `<table><thead><tr><th>Order</th><th>Customer</th><th>City</th><th>Deliver Date</th><th>Note (local)</th></tr></thead><tbody>`;
@@ -245,21 +264,33 @@ export class OrdersBoardComponent implements OnInit {
 
     return this.ymd(auto);
   }
-  private listCategoryRank(o: Order & { isExpress: boolean }): number {
-    if (o.isExpress) return 0;
+private listCategoryRank(o: Order & { isExpress: boolean }): number {
+  // 0 = Express
+  if (o.isExpress) return 0;
 
-    if (!o.isExpress && this.isOutsideLebanon(o)) return 1;
+  // 1 = International (outside Lebanon)
+  if (!o.isExpress && this.isOutsideLebanon(o)) return 1;
 
-    const hasNote =
-      !!(o as any).noteLocal ||
-      !!o.note ||
-      (o.noteAttributes && o.noteAttributes.length > 0);
-    if (hasNote) return 2;
+  const isExchange = this.isExchangeOrder(o);
 
-    if (this.isOld(o)) return 3;
+  // 2 = orders with notes (but NOT exchange)
+  const hasNote =
+    !!(o as any).noteLocal ||
+    !!o.note ||
+    (o.noteAttributes && o.noteAttributes.length > 0);
 
-    return 4;
-  }
+  if (hasNote && !isExchange) return 2;
+
+  // 3 = Exchange orders (always after other notes)
+  if (isExchange) return 3;
+
+  // 4 = OLD orders
+  if (this.isOld(o)) return 4;
+
+  // 5 = everything else
+  return 5;
+}
+
 
 
 
@@ -307,7 +338,46 @@ export class OrdersBoardComponent implements OnInit {
 
     return out;
   }
+private shouldPrintCard(o: Order & { noteLocal?: string | null }): boolean {
+  // Express
+  const isExpress = this.isExpress(o);
 
+  // International (خارج لبنان)
+  const isIntl = this.isOutsideLebanon(o);
+
+  // Notes (من Shopify NOTE أو من Google Sheets NOTE_LOCAL أو noteAttributes)
+  const hasNote =
+    !!(o.noteLocal && o.noteLocal.toString().trim()) ||
+    !!(o.note && o.note.toString().trim()) ||
+    (!!o.noteAttributes && o.noteAttributes.length > 0);
+
+  // Old order
+  const isOld = this.isOld(o);
+
+  // Exchange: من التاغز أو من أي نوت
+  const tagsText = (o.tags || []).join(' ').toLowerCase();
+  const notesText = ((o.noteLocal || '') + ' ' + (o.note || '')).toLowerCase();
+  const isExchange =
+    tagsText.includes('exchange') || notesText.includes('exchange');
+
+  // 🔴 شرط خاص للـ OLD:
+  // إذا الطلب Old وما عنده أي note → لا نطبعه أبداً
+  if (isOld && !hasNote) {
+    return false;
+  }
+
+  // ✅ غير هيك: نطبعه إذا كان Express أو International أو عنده Notes أو Exchange
+  return isExpress || isIntl || hasNote || isExchange;
+}
+
+
+
+private isExchangeOrder(o: Order): boolean {
+  // tag "Exchange" OR sourceName == "Exchange"
+  const sourceIsExchange = (o.sourceName || '').trim().toLowerCase() === 'exchange';
+  const tagIsExchange = this.has(o, 'exchange'); // uses your private has()
+  return sourceIsExchange || tagIsExchange;
+}
   get last3OpenOrders(): Order[] {
     const open = (this.orders || []).filter(o => {
       const s = this.statusOf(o);
@@ -317,7 +387,7 @@ export class OrdersBoardComponent implements OnInit {
       (a.createdAt?.getTime() ?? a.updatedAt?.getTime() ?? 0)
       - (b.createdAt?.getTime() ?? b.updatedAt?.getTime() ?? 0)
     );
-    return open.slice(0, 3);
+    return open.slice(0, 5);
   }
 
   private beirutNowFrom(d: Date): Date {
@@ -647,34 +717,46 @@ export class OrdersBoardComponent implements OnInit {
     return ageDays > 10 && !shippedOrComplete;
   }
 
-  private buildPrintNote(o: Order): string {
-    const parts: string[] = [];
+private buildPrintNote(o: Order): string {
+  const parts: string[] = [];
 
-    // 1) Express flag
-    if (this.isExpress(o)) {
-      parts.push('Express');
-    }
-
-    // 2) Outside Lebanon -> add country
-    const country = (o.shipTo?.country || '').trim();
-    if (country && country.toLowerCase() !== 'lebanon') {
-      parts.push(country);
-    }
-
-    // 3) Old order: more than 10 days, still pending/processing
-    const d = o.createdAt || o.updatedAt;
-    if (d instanceof Date && !isNaN(d.getTime())) {
-      const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-      const s = this.statusOf(o);
-      if (ageDays > 10 && (s === 'pending' || s === 'processing')) {
-        parts.push('Old order (10+ days, not shipped)');
-        // if you want EXACT wording like you wrote:
-        // parts.push('old order (ordered more than 10 days ago and not shipped yet)');
-      }
-    }
-
-    return parts.join(' | ');
+  // 0) إذا الـ NOTE من Shopify فيه كلمة Exchange
+  const shopifyNote = (o.note || '').trim();
+  if (shopifyNote && /exchange/i.test(shopifyNote)) {
+    parts.push('Exchange');
   }
+
+  // 1) Express flag
+  if (this.isExpress(o)) {
+    parts.push('Express');
+  }
+
+  // 2) Outside Lebanon -> add country
+  const country = (o.shipTo?.country || '').trim();
+  if (country && country.toLowerCase() !== 'lebanon') {
+    parts.push(country);
+  }
+
+  // 3) Old order: more than 10 days, still pending/processing
+  const d = o.createdAt || o.updatedAt;
+  if (d instanceof Date && !isNaN(d.getTime())) {
+    const ageDays = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+    const s = this.statusOf(o);
+    if (ageDays > 10 && (s === 'pending' || s === 'processing')) {
+      parts.push('Old order (10+ days, not shipped)');
+    }
+  }
+
+  // إزالة التكرار
+  const seen = new Set<string>();
+  return parts.filter(p => {
+    const key = p.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).join(' | ');
+}
+
 
   // ========= FETCHING / PAGINATION ============================================
   ngOnInit() { }

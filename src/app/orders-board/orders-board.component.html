@@ -82,7 +82,7 @@
   </div>
 
   <div class="last-three" *ngIf="last3OpenOrders.length">
-    <b>Last 3 open orders</b>
+    <b>Last 5 open orders</b>
     <div class="chips">
       <span class="chip" *ngFor="let o of last3OpenOrders">
         {{ o.orderName || o.orderId }}
