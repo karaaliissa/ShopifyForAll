@@ -44,6 +44,40 @@
       Canceled {{ cancelCount }}
     </button>
   </div>
+<!-- Money totals for Pending / Processing -->
+<div class="status-bar totals-bar" *ngIf="orders.length">
+  <span>
+    <strong>Pending total:</strong>
+    <ng-container *ngIf="totalsCurrency; else pendingPlain">
+      <strong>{{ pendingTotal | currency: totalsCurrency:'symbol' }}</strong>
+    </ng-container>
+    <ng-template #pendingPlain>
+      <strong>{{ pendingTotal | number:'1.0-2' }}</strong>
+    </ng-template>
+  </span>
+
+  <span  style="margin-left:16px;">
+    <strong>Processing total:</strong>
+    <ng-container *ngIf="totalsCurrency; else processingPlain">
+      <strong>{{ processingTotal | currency: totalsCurrency:'symbol' }}</strong>
+    </ng-container>
+    <ng-template #processingPlain>
+      <strong>{{ processingTotal | number:'1.0-2' }}</strong>
+    </ng-template>
+  </span>
+
+  <span  style="margin-left:16px;">
+    <strong>Pending + Processing total:</strong>
+    <ng-container *ngIf="totalsCurrency; else ppPlain">
+      <strong>{{ pendingProcessingTotal | currency: totalsCurrency:'symbol' }}</strong>
+    </ng-container>
+    <ng-template #ppPlain>
+      <strong>{{ pendingProcessingTotal | number:'1.0-2' }}</strong>
+    </ng-template>
+  </span>
+</div>
+
+
 
   <!-- Express counters -->
   <div class="status-bar express-bar">

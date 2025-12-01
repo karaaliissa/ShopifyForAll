@@ -870,4 +870,19 @@ export class OrdersBoardComponent implements OnInit {
       error: () => alert('Failed to export Shipday CSV.')
     });
   }
+  // 💰 Totals by status (only pending + processing)
+get pendingTotal(): number {
+  return (this.orders || [])
+    .filter(o => this.statusOf(o) === 'pending')
+    .reduce((sum, o: any) => sum + (o.total || 0), 0);
+}
+
+get processingTotal(): number {
+  return (this.orders || [])
+    .filter(o => this.statusOf(o) === 'processing')
+    .reduce((sum, o: any) => sum + (o.total || 0), 0);
+}
+get pendingProcessingTotal(): number {
+  return this.pendingTotal + this.processingTotal;
+}
 }
