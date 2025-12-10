@@ -22,10 +22,10 @@
       All open {{ openOrders.length }}
     </button>
 
-    <button class="btn stat pill pending" style="background-color: violet ; color: black"
+    <!-- <button class="btn stat pill pending" style="background-color: violet ; color: black"
       [class.active-filter]="statusFilter==='pending'" (click)="setStatusFilter('pending')">
       Pending {{ pendingCount }}
-    </button>
+    </button> -->
 
     <button class="btn stat pill processing" style="background-color: cornflowerblue ; color: black"
       [class.active-filter]="statusFilter==='processing'" (click)="setStatusFilter('processing')">
@@ -142,14 +142,14 @@
   </div>
 
   <br><br>
-  <div class="pager" *ngIf="summary?.total">
+  <!-- <div class="pager" *ngIf="summary?.total">
     <button class="btn" (click)="loadMore()" [disabled]="loading || !nextCursor">
       {{ loading ? 'Loading…' : (nextCursor ? 'Load more' : 'All loaded') }}
     </button>
     <span class="muted" style="margin-left:8px">
       Showing {{ orders.length }} of {{ summary?.total }}
     </span>
-  </div>
+  </div> -->
 
   <!-- Tabs -->
   <div class="tabs tabs--main">
@@ -459,14 +459,14 @@
     </table>
   </div>
 
-  <div class="pager" *ngIf="summary?.total">
+  <!-- <div class="pager" *ngIf="summary?.total">
     <button class="btn" (click)="loadMore()" [disabled]="loading || !nextCursor">
       {{ loading ? 'Loading…' : (nextCursor ? 'Load more' : 'All loaded') }}
     </button>
     <span class="muted" style="margin-left:8px">
       Showing {{ orders.length }} of {{ summary?.total }}
     </span>
-  </div>
+  </div> -->
 
   <div *ngIf="!loading && !orders?.length" class="empty">
     No orders yet.

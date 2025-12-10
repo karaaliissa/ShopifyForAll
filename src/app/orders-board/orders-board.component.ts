@@ -42,9 +42,9 @@ export class OrdersBoardComponent implements OnInit {
   printStoreName = 'cropndtop';
 
   summary: OrdersSummary | null = null;   // global counters
-  pageSize = 25;                          // page size
-  cursor: string | null = null;          // current cursor (request)
-  nextCursor: string | null = null;      // next page cursor (response)
+  // pageSize = 25;                          // page size
+  // cursor: string | null = null;          // current cursor (request)
+  // nextCursor: string | null = null;      // next page cursor (response)
 
   // 🔍 search + status filter
   searchTerm = '';
@@ -514,7 +514,7 @@ export class OrdersBoardComponent implements OnInit {
   }
 
   // 🔢 Counters
-  get pendingCount() { return this.summary?.pending ?? this.orders.filter(o => this.statusOf(o) === 'pending').length; }
+  // get pendingCount() { return this.summary?.pending ?? this.orders.filter(o => this.statusOf(o) === 'pending').length; }
   get processingCount() { return this.summary?.processing ?? this.orders.filter(o => this.statusOf(o) === 'processing').length; }
   get shippedCount() { return this.summary?.shipped ?? this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
   get completeCount() { return this.summary?.complete ?? this.orders.filter(o => this.statusOf(o) === 'complete').length; }
@@ -797,24 +797,29 @@ export class OrdersBoardComponent implements OnInit {
 
   // ========= FETCHING / PAGINATION ============================================
   ngOnInit() { }
-
   fetch() {
     this.loading = true;
     this.error = '';
-    this.cursor = null;
-    this.nextCursor = null;
-
-    this.ordersSvc.getSummary().subscribe({
-      next: (s) => { this.summary = s; },
-      error: () => { }
-    });
-
-    this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
+    this.summary = null;   // let getters fall back to computing from orders
+  
+    // 🔹 Do NOT pass limit or cursor → backend returns ALL orders
+    this.ordersSvc.getOrdersPage({}).subscribe({
       next: (page) => {
+        // page.rows contains ALL orders
         this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
-        this.nextCursor = page.nextCursor ?? null;
+  
+        // optional: if you want total for the header
+        this.summary = {
+          ok: true,
+          total: page.total ?? this.orders.length,
+          pending: 0, processing: 0, shipped: 0, complete: 0, cancel: 0,
+          expressPending: 0, expressProcessing: 0, expressShipped: 0,
+          expressComplete: 0, expressCancel: 0
+        } as any; // or adjust the type
+  
         this.loading = false;
-
+  
+        // prefetch line items (same as before)
         this.orders.forEach(o => {
           this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
             o.items = items || [];
@@ -827,27 +832,57 @@ export class OrdersBoardComponent implements OnInit {
       }
     });
   }
+  
+  // fetch() {
+  //   this.loading = true;
+  //   this.error = '';
+  //   this.cursor = null;
+  //   this.nextCursor = null;
 
-  loadMore() {
-    if (!this.nextCursor) return;
-    this.loading = true;
+  //   this.ordersSvc.getSummary().subscribe({
+  //     next: (s) => { this.summary = s; },
+  //     error: () => { }
+  //   });
 
-    this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.nextCursor }).subscribe({
-      next: (page) => {
-        const newRows = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
-        this.orders = [...this.orders, ...newRows];
-        this.nextCursor = page.nextCursor ?? null;
-        this.loading = false;
+  //   this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
+  //     next: (page) => {
+  //       this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+  //       this.nextCursor = page.nextCursor ?? null;
+  //       this.loading = false;
 
-        newRows.forEach(o => {
-          this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
-            o.items = items || [];
-          });
-        });
-      },
-      error: () => { this.loading = false; }
-    });
-  }
+  //       this.orders.forEach(o => {
+  //         this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
+  //           o.items = items || [];
+  //         });
+  //       });
+  //     },
+  //     error: (err) => {
+  //       this.error = err?.message ?? 'Failed to load orders';
+  //       this.loading = false;
+  //     }
+  //   });
+  // }
+
+  // loadMore() {
+  //   if (!this.nextCursor) return;
+  //   this.loading = true;
+
+  //   this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.nextCursor }).subscribe({
+  //     next: (page) => {
+  //       const newRows = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+  //       this.orders = [...this.orders, ...newRows];
+  //       this.nextCursor = page.nextCursor ?? null;
+  //       this.loading = false;
+
+  //       newRows.forEach(o => {
+  //         this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
+  //           o.items = items || [];
+  //         });
+  //       });
+  //     },
+  //     error: () => { this.loading = false; }
+  //   });
+  // }
 
   exportShipday() {
     this.exportSvc.shipday(this.exportShop, this.exportDate).subscribe({
