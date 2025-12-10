@@ -22,7 +22,8 @@ export interface PickingRow {
 
 @Injectable({ providedIn: 'root' })
 export class PickingService {
-  private base = 'https://shopify-sheets-backend.vercel.app';
+  // private base = 'https://shopify-sheets-backend.vercel.app';
+  private base = 'https://shopify-sheets-backend.onrender.com';
   constructor(private http: HttpClient) {}
 
   getPickingList(params: { shop?: string; from?: string; to?: string }): Observable<PickingRow[]> {

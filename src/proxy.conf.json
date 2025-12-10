@@ -1,6 +1,6 @@
 {
     "/api": {
-      "target": "https://shopify-sheets-backend.vercel.app",
+      "target": "https://shopify-sheets-backend.onrender.com",
       "secure": true,
       "changeOrigin": true,
       "logLevel": "info"

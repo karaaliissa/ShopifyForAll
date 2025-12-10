@@ -10,7 +10,8 @@ export interface WorkRow {
 
 @Injectable({ providedIn: 'root' })
 export class ProductionService {
-  private base = 'https://shopify-sheets-backend.vercel.app';
+  // private base = 'https://shopify-sheets-backend.vercel.app';
+  private base = 'https://shopify-sheets-backend.onrender.com';
   constructor(private http: HttpClient) {}
 
   list(params: { stage?: string; shop?: string; date?: string }) {
