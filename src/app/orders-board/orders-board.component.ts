@@ -800,26 +800,22 @@ export class OrdersBoardComponent implements OnInit {
   fetch() {
     this.loading = true;
     this.error = '';
-    this.summary = null;   // let getters fall back to computing from orders
-  
-    // 🔹 Do NOT pass limit or cursor → backend returns ALL orders
+    this.summary = null;
+
     this.ordersSvc.getOrdersPage({}).subscribe({
       next: (page) => {
-        // page.rows contains ALL orders
         this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
-  
-        // optional: if you want total for the header
-        this.summary = {
-          ok: true,
-          total: page.total ?? this.orders.length,
-          pending: 0, processing: 0, shipped: 0, complete: 0, cancel: 0,
-          expressPending: 0, expressProcessing: 0, expressShipped: 0,
-          expressComplete: 0, expressCancel: 0
-        } as any; // or adjust the type
-  
+
+        // ✅ correct counters (no zeros)
+        this.summary = this.buildSummaryFromOrders(this.orders);
+
+        // ✅ if you want to use backend total, set ONLY the total field
+        if (page.total != null) {
+          this.summary.total = page.total;
+        }
+
         this.loading = false;
-  
-        // prefetch line items (same as before)
+
         this.orders.forEach(o => {
           this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
             o.items = items || [];
@@ -832,7 +828,8 @@ export class OrdersBoardComponent implements OnInit {
       }
     });
   }
-  
+
+
   // fetch() {
   //   this.loading = true;
   //   this.error = '';
@@ -883,7 +880,34 @@ export class OrdersBoardComponent implements OnInit {
   //     error: () => { this.loading = false; }
   //   });
   // }
+  private buildSummaryFromOrders(list: Order[]): OrdersSummary {
+    const sum: OrdersSummary = {
+      total: list.length,
+      pending: 0, processing: 0, shipped: 0, complete: 0, cancel: 0,
+      expressPending: 0, expressProcessing: 0, expressShipped: 0,
+      expressComplete: 0, expressCancel: 0
+    };
 
+    for (const o of list) {
+      const s = this.statusOf(o);
+
+      if (s === 'pending') sum.pending++;
+      else if (s === 'processing') sum.processing++;
+      else if (s === 'shipped') sum.shipped++;
+      else if (s === 'complete') sum.complete++;
+      else if (s === 'cancel') sum.cancel++;
+
+      if (this.isExpress(o)) {
+        if (s === 'pending') sum.expressPending++;
+        else if (s === 'processing') sum.expressProcessing++;
+        else if (s === 'shipped') sum.expressShipped++;
+        else if (s === 'complete') sum.expressComplete++;
+        else if (s === 'cancel') sum.expressCancel++;
+      }
+    }
+
+    return sum;
+  }
   exportShipday() {
     this.exportSvc.shipday(this.exportShop, this.exportDate).subscribe({
       next: res => {
@@ -906,18 +930,18 @@ export class OrdersBoardComponent implements OnInit {
     });
   }
   // 💰 Totals by status (only pending + processing)
-get pendingTotal(): number {
-  return (this.orders || [])
-    .filter(o => this.statusOf(o) === 'pending')
-    .reduce((sum, o: any) => sum + (o.total || 0), 0);
-}
+  get pendingTotal(): number {
+    return (this.orders || [])
+      .filter(o => this.statusOf(o) === 'pending')
+      .reduce((sum, o: any) => sum + (o.total || 0), 0);
+  }
 
-get processingTotal(): number {
-  return (this.orders || [])
-    .filter(o => this.statusOf(o) === 'processing')
-    .reduce((sum, o: any) => sum + (o.total || 0), 0);
-}
-get pendingProcessingTotal(): number {
-  return this.pendingTotal + this.processingTotal;
-}
+  get processingTotal(): number {
+    return (this.orders || [])
+      .filter(o => this.statusOf(o) === 'processing')
+      .reduce((sum, o: any) => sum + (o.total || 0), 0);
+  }
+  get pendingProcessingTotal(): number {
+    return this.pendingTotal + this.processingTotal;
+  }
 }
