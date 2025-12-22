@@ -6,6 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { ExportService } from '../services/export.service';
 import { PrintModalComponent } from '../print-modal/print-modal.component';
 import { DeliveryDateModalComponent } from '../delivery-date-modal/delivery-date-modal.component';
+import { from, of } from 'rxjs';
+import { mergeMap, tap, catchError, finalize } from 'rxjs/operators';
 
 type UIOrder = Order & { items?: any[] };
 
@@ -19,6 +21,28 @@ type UIOrder = Order & { items?: any[] };
 })
 export class OrdersBoardComponent implements OnInit {
   @ViewChild(PrintModalComponent) printModal?: PrintModalComponent;
+
+  private loadItemsInBatches(list: UIOrder[], concurrency = 8) {
+    from(list).pipe(
+      mergeMap((o) => {
+        // ✅ skip if already loaded (avoid re-fetch)
+        if (o.items && o.items.length > 0) return of(o.items);
+
+        return this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).pipe(
+          tap((items) => {
+            o.items = items || [];
+          }),
+          catchError(() => {
+            o.items = [];
+            return of([]);
+          })
+        );
+      }, concurrency),
+      finalize(() => {
+        // console.log('Items loading done');
+      })
+    ).subscribe();
+  }
 
 
   pageSize = 50;
@@ -828,11 +852,13 @@ export class OrdersBoardComponent implements OnInit {
         this.loading = false;
 
         // load items for visible orders (optional heavy)
-        this.orders.forEach(o => {
-          this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
-            o.items = items || [];
-          });
-        });
+        // this.orders.forEach(o => {
+        //   this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
+        //     o.items = items || [];
+        //   });
+        // });
+        this.loadItemsInBatches(this.orders, 8); // 8 concurrent requests
+
       },
       error: (err) => {
         this.error = err?.message ?? 'Failed to load orders';
@@ -862,12 +888,8 @@ export class OrdersBoardComponent implements OnInit {
 
         this.loadingMore = false;
 
-        // optional: load items for new page only
-        more.forEach(o => {
-          this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
-            o.items = items || [];
-          });
-        });
+        // ✅ load items/images for new page only (batched)
+        this.loadItemsInBatches(more, 8);
       },
       error: (err) => {
         this.error = err?.message ?? 'Failed to load more orders';
@@ -882,18 +904,24 @@ export class OrdersBoardComponent implements OnInit {
     this.error = '';
 
     try {
-      // if no orders loaded yet, start with fetch first
+      // if no orders loaded yet, load first page
       if (!this.orders.length) {
-        await firstValueFrom(this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true }).pipe());
-        // بس أسهل: نطلب أول صفحة هون بدل fetch() حتى ما نعيد logic:
-        const first = await firstValueFrom(this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true }));
+        const first = await firstValueFrom(
+          this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true })
+        );
+
         this.orders = first.rows.map<UIOrder>(o => ({ ...o, items: [] }));
         this.cursor = first.nextCursor ?? null;
         this.hasMore = !!this.cursor;
+
         this.summary = this.buildSummaryFromOrders(this.orders);
         if (first.total != null) this.summary.total = first.total;
+
+        // ✅ load items/images for first page too
+        this.loadItemsInBatches(this.orders, 8);
       }
 
+      // load remaining pages
       while (this.cursor) {
         const page = await firstValueFrom(
           this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor })
@@ -914,10 +942,11 @@ export class OrdersBoardComponent implements OnInit {
         this.summary = this.buildSummaryFromOrders(this.orders);
         if (page.total != null) this.summary.total = page.total;
 
-        // (اختياري) تحميل items للـ page الجديدة
-        // انتبه: load ALL + items لكل order ممكن يكون تقيل جدًا
-        // إذا بدك نخليها lazy لما تفتح order.
+        // ✅ IMPORTANT: load items/images as we go (not only at end)
+        // this prevents "no images" until finish and avoids heavy spike
+        this.loadItemsInBatches(more, 8);
       }
+
     } catch (e: any) {
       this.error = e?.message ?? 'Failed to load all orders';
     } finally {

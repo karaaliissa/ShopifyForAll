@@ -312,10 +312,10 @@ export class OrdersService {
     let params = new HttpParams();
     if (opts.shop) params = params.set('shop', opts.shop);
     if (opts.status) params = params.set('status', String(opts.status));
-  
+
     // ✅ ADD THIS
     if (opts.limit) params = params.set('limit', String(opts.limit));
-  
+
     if (opts.search) params = params.set('search', String(opts.search));
     if (opts.cursor) params = params.set('cursor', String(opts.cursor));
     if (opts.refresh) params = params.set('refresh', '1').set('ts', String(Date.now()));
@@ -325,7 +325,7 @@ export class OrdersService {
     if (opts.notTagged) params = params.set('notTagged', '1');
     if (opts.tag) params = params.set('tag', String(opts.tag));
     if (opts.hideComplete) params = params.set('hideComplete', '1');
-  
+
     return this.http.get<any>(`${this.base}/api/orders/page`, { params }).pipe(
       map((res: any): OrdersPage => {
         const items = Array.isArray(res?.items) ? res.items : [];
@@ -337,7 +337,7 @@ export class OrdersService {
       catchError(() => of({ rows: [], nextCursor: null, total: 0 }))
     );
   }
-  
+
 
   // ----------------------------
   // Summary (global counters)
