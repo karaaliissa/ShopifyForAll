@@ -614,8 +614,8 @@ const adaptRow = (x: SheetOrderRow): Order => ({
 
 @Injectable({ providedIn: 'root' })
 export class OrdersService {
-  // private base = 'https://shopify-sheets-backend.onrender.com';
-  private base = 'http://localhost:3001';
+  private base = 'https://shopify-sheets-backend.onrender.com';
+  // private base = 'http://localhost:3001';
 
   private itemsCache = new Map<string, OrderItem[]>();
 
