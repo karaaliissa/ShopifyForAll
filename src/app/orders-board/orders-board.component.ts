@@ -805,7 +805,16 @@ export class OrdersBoardComponent implements OnInit {
     this.ordersSvc.getOrdersPage({}).subscribe({
       next: (page) => {
         this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
-
+        // 🔍 DEBUG — ADD HERE
+        console.log("TOTAL:", this.orders.length);
+        console.log(
+          "MISSING ID:",
+          this.orders.filter(o => !o.orderId || o.orderId === 'undefined')
+        );
+        console.log(
+          "MISSING SHOP:",
+          this.orders.filter(o => !o.shopDomain)
+        );
         // ✅ correct counters (no zeros)
         this.summary = this.buildSummaryFromOrders(this.orders);
 
