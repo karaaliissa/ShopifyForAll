@@ -25,8 +25,8 @@ export class OrdersBoardComponent implements OnInit {
   private loadItemsInBatches(list: UIOrder[], concurrency = 8) {
     from(list).pipe(
       mergeMap((o) => {
-        // ✅ skip if already loaded (avoid re-fetch)
-        if (o.items && o.items.length > 0) return of(o.items);
+        // ✅ if items exists => already loaded (even if empty)
+        if (o.items) return of(o.items);
 
         return this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).pipe(
           tap((items) => {
@@ -43,6 +43,7 @@ export class OrdersBoardComponent implements OnInit {
       })
     ).subscribe();
   }
+
 
 
   pageSize = 50;
@@ -839,7 +840,7 @@ export class OrdersBoardComponent implements OnInit {
 
     this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true }).subscribe({
       next: (page) => {
-        this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+        this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: undefined }));
 
         // set cursor/hasMore
         this.cursor = page.nextCursor ?? null;
@@ -873,7 +874,7 @@ export class OrdersBoardComponent implements OnInit {
 
     this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
       next: (page) => {
-        const more = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+        const more = page.rows.map<UIOrder>(o => ({ ...o, items: undefined }));
 
         // append
         this.orders = [...this.orders, ...more];
@@ -910,7 +911,7 @@ export class OrdersBoardComponent implements OnInit {
           this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true })
         );
 
-        this.orders = first.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+        this.orders = first.rows.map<UIOrder>(o => ({ ...o, items: undefined }));
         this.cursor = first.nextCursor ?? null;
         this.hasMore = !!this.cursor;
 
@@ -927,7 +928,7 @@ export class OrdersBoardComponent implements OnInit {
           this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor })
         );
 
-        const more = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+        const more = page.rows.map<UIOrder>(o => ({ ...o, items: undefined }));
         if (!more.length) {
           this.cursor = null;
           this.hasMore = false;
