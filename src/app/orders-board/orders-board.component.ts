@@ -20,6 +20,15 @@ type UIOrder = Order & { items?: any[] };
 export class OrdersBoardComponent implements OnInit {
   @ViewChild(PrintModalComponent) printModal?: PrintModalComponent;
 
+
+  pageSize = 50;
+  cursor: string | null = null;
+  hasMore = false;
+
+  loadingMore = false;
+  loadingAll = false;
+
+
   activeTab: 'orders' | 'list' | 'done' = 'orders';
 
   showDateModal = false;
@@ -514,7 +523,6 @@ export class OrdersBoardComponent implements OnInit {
   }
 
   // 🔢 Counters
-  // get pendingCount() { return this.summary?.pending ?? this.orders.filter(o => this.statusOf(o) === 'pending').length; }
   get processingCount() { return this.summary?.processing ?? this.orders.filter(o => this.statusOf(o) === 'processing').length; }
   get shippedCount() { return this.summary?.shipped ?? this.orders.filter(o => this.statusOf(o) === 'shipped').length; }
   get completeCount() { return this.summary?.complete ?? this.orders.filter(o => this.statusOf(o) === 'complete').length; }
@@ -802,29 +810,24 @@ export class OrdersBoardComponent implements OnInit {
     this.error = '';
     this.summary = null;
 
-    this.ordersSvc.getOrdersPage({}).subscribe({
+    this.cursor = null;
+    this.hasMore = false;
+
+    this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true }).subscribe({
       next: (page) => {
         this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
-        // 🔍 DEBUG — ADD HERE
-        console.log("TOTAL:", this.orders.length);
-        console.log(
-          "MISSING ID:",
-          this.orders.filter(o => !o.orderId || o.orderId === 'undefined')
-        );
-        console.log(
-          "MISSING SHOP:",
-          this.orders.filter(o => !o.shopDomain)
-        );
-        // ✅ correct counters (no zeros)
-        this.summary = this.buildSummaryFromOrders(this.orders);
 
-        // ✅ if you want to use backend total, set ONLY the total field
-        if (page.total != null) {
-          this.summary.total = page.total;
-        }
+        // set cursor/hasMore
+        this.cursor = page.nextCursor ?? null;
+        this.hasMore = !!this.cursor;
+
+        // counters
+        this.summary = this.buildSummaryFromOrders(this.orders);
+        if (page.total != null) this.summary.total = page.total;
 
         this.loading = false;
 
+        // load items for visible orders (optional heavy)
         this.orders.forEach(o => {
           this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
             o.items = items || [];
@@ -837,58 +840,91 @@ export class OrdersBoardComponent implements OnInit {
       }
     });
   }
+  loadMore50() {
+    if (!this.hasMore || this.loadingMore || this.loadingAll) return;
 
+    this.loadingMore = true;
 
-  // fetch() {
-  //   this.loading = true;
-  //   this.error = '';
-  //   this.cursor = null;
-  //   this.nextCursor = null;
+    this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
+      next: (page) => {
+        const more = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
 
-  //   this.ordersSvc.getSummary().subscribe({
-  //     next: (s) => { this.summary = s; },
-  //     error: () => { }
-  //   });
+        // append
+        this.orders = [...this.orders, ...more];
 
-  //   this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
-  //     next: (page) => {
-  //       this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
-  //       this.nextCursor = page.nextCursor ?? null;
-  //       this.loading = false;
+        // update cursor
+        this.cursor = page.nextCursor ?? null;
+        this.hasMore = !!this.cursor;
 
-  //       this.orders.forEach(o => {
-  //         this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
-  //           o.items = items || [];
-  //         });
-  //       });
-  //     },
-  //     error: (err) => {
-  //       this.error = err?.message ?? 'Failed to load orders';
-  //       this.loading = false;
-  //     }
-  //   });
-  // }
+        // update counters (based on loaded)
+        this.summary = this.buildSummaryFromOrders(this.orders);
+        if (page.total != null) this.summary.total = page.total;
 
-  // loadMore() {
-  //   if (!this.nextCursor) return;
-  //   this.loading = true;
+        this.loadingMore = false;
 
-  //   this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.nextCursor }).subscribe({
-  //     next: (page) => {
-  //       const newRows = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
-  //       this.orders = [...this.orders, ...newRows];
-  //       this.nextCursor = page.nextCursor ?? null;
-  //       this.loading = false;
+        // optional: load items for new page only
+        more.forEach(o => {
+          this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
+            o.items = items || [];
+          });
+        });
+      },
+      error: (err) => {
+        this.error = err?.message ?? 'Failed to load more orders';
+        this.loadingMore = false;
+      }
+    });
+  }
+  async loadAll() {
+    if (this.loadingAll || this.loadingMore) return;
 
-  //       newRows.forEach(o => {
-  //         this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
-  //           o.items = items || [];
-  //         });
-  //       });
-  //     },
-  //     error: () => { this.loading = false; }
-  //   });
-  // }
+    this.loadingAll = true;
+    this.error = '';
+
+    try {
+      // if no orders loaded yet, start with fetch first
+      if (!this.orders.length) {
+        await firstValueFrom(this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true }).pipe());
+        // بس أسهل: نطلب أول صفحة هون بدل fetch() حتى ما نعيد logic:
+        const first = await firstValueFrom(this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true }));
+        this.orders = first.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+        this.cursor = first.nextCursor ?? null;
+        this.hasMore = !!this.cursor;
+        this.summary = this.buildSummaryFromOrders(this.orders);
+        if (first.total != null) this.summary.total = first.total;
+      }
+
+      while (this.cursor) {
+        const page = await firstValueFrom(
+          this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor })
+        );
+
+        const more = page.rows.map<UIOrder>(o => ({ ...o, items: [] }));
+        if (!more.length) {
+          this.cursor = null;
+          this.hasMore = false;
+          break;
+        }
+
+        this.orders = [...this.orders, ...more];
+
+        this.cursor = page.nextCursor ?? null;
+        this.hasMore = !!this.cursor;
+
+        this.summary = this.buildSummaryFromOrders(this.orders);
+        if (page.total != null) this.summary.total = page.total;
+
+        // (اختياري) تحميل items للـ page الجديدة
+        // انتبه: load ALL + items لكل order ممكن يكون تقيل جدًا
+        // إذا بدك نخليها lazy لما تفتح order.
+      }
+    } catch (e: any) {
+      this.error = e?.message ?? 'Failed to load all orders';
+    } finally {
+      this.loadingAll = false;
+    }
+  }
+
   private buildSummaryFromOrders(list: Order[]): OrdersSummary {
     const sum: OrdersSummary = {
       total: list.length,
