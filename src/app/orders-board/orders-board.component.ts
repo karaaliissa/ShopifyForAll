@@ -25,24 +25,39 @@ export class OrdersBoardComponent implements OnInit {
   private loadItemsInBatches(list: UIOrder[], concurrency = 8) {
     from(list).pipe(
       mergeMap((o) => {
-        // ✅ if items exists => already loaded (even if empty)
-        if (o.items) return of(o.items);
+        const orderId = o.orderId;
+        const shopDomain = o.shopDomain;
 
-        return this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).pipe(
+        console.log("ITEMS CHECK", { orderId, shopDomain, orderName: o.orderName });
+
+        if (!shopDomain || !orderId) {
+          console.warn("SKIP ITEMS (missing fields)", o);
+          o.items = [];
+          return of([]);
+        }
+
+        if (Array.isArray(o.items)) return of(o.items);
+
+
+        return this.ordersSvc.getOrderItems(shopDomain, orderId).pipe(
           tap((items) => {
+            console.log("ITEMS LOADED", orderId, items?.length);
             o.items = items || [];
           }),
-          catchError(() => {
+          catchError((err) => {
+            console.error("ITEMS ERROR", orderId, err);
             o.items = [];
             return of([]);
           })
         );
       }, concurrency),
-      finalize(() => {
-        // console.log('Items loading done');
-      })
+      finalize(() => console.log("Items loading done"))
     ).subscribe();
   }
+
+
+
+
 
 
 
@@ -830,36 +845,33 @@ export class OrdersBoardComponent implements OnInit {
 
   // ========= FETCHING / PAGINATION ============================================
   ngOnInit() { }
+
+
   fetch() {
     this.loading = true;
     this.error = '';
     this.summary = null;
-
     this.cursor = null;
     this.hasMore = false;
 
-    this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true }).subscribe({
+    this.ordersSvc.getOrdersPage({
+      shop: this.exportShop,
+      limit: this.pageSize,
+      cursor: null,
+      refresh: true
+    }).subscribe({
       next: (page) => {
-        this.orders = page.rows.map<UIOrder>(o => ({ ...o, items: undefined }));
+        this.orders = (page.rows || []).map(o => ({ ...o, items: undefined }));
 
-        // set cursor/hasMore
         this.cursor = page.nextCursor ?? null;
         this.hasMore = !!this.cursor;
 
-        // counters
         this.summary = this.buildSummaryFromOrders(this.orders);
         if (page.total != null) this.summary.total = page.total;
 
         this.loading = false;
 
-        // load items for visible orders (optional heavy)
-        // this.orders.forEach(o => {
-        //   this.ordersSvc.getOrderItems(o.shopDomain, o.orderId).subscribe(items => {
-        //     o.items = items || [];
-        //   });
-        // });
-        this.loadItemsInBatches(this.orders, 8); // 8 concurrent requests
-
+        this.loadItemsInBatches(this.orders, 8);
       },
       error: (err) => {
         this.error = err?.message ?? 'Failed to load orders';
@@ -867,29 +879,32 @@ export class OrdersBoardComponent implements OnInit {
       }
     });
   }
+
+
+
   loadMore50() {
     if (!this.hasMore || this.loadingMore || this.loadingAll) return;
 
     this.loadingMore = true;
 
-    this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor }).subscribe({
+    this.ordersSvc.getOrdersPage({
+      shop: this.exportShop,
+      limit: this.pageSize,
+      cursor: this.cursor
+    }).subscribe({
       next: (page) => {
-        const more = page.rows.map<UIOrder>(o => ({ ...o, items: undefined }));
+        const more = (page.rows || []).map(o => ({ ...o, items: undefined }));
 
-        // append
         this.orders = [...this.orders, ...more];
 
-        // update cursor
         this.cursor = page.nextCursor ?? null;
         this.hasMore = !!this.cursor;
 
-        // update counters (based on loaded)
         this.summary = this.buildSummaryFromOrders(this.orders);
         if (page.total != null) this.summary.total = page.total;
 
         this.loadingMore = false;
 
-        // ✅ load items/images for new page only (batched)
         this.loadItemsInBatches(more, 8);
       },
       error: (err) => {
@@ -898,6 +913,9 @@ export class OrdersBoardComponent implements OnInit {
       }
     });
   }
+
+
+
   async loadAll() {
     if (this.loadingAll || this.loadingMore) return;
 
@@ -905,30 +923,37 @@ export class OrdersBoardComponent implements OnInit {
     this.error = '';
 
     try {
-      // if no orders loaded yet, load first page
       if (!this.orders.length) {
         const first = await firstValueFrom(
-          this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: null, refresh: true })
+          this.ordersSvc.getOrdersPage({
+            shop: this.exportShop,
+            limit: this.pageSize,
+            cursor: null,
+            refresh: true
+          })
         );
 
-        this.orders = first.rows.map<UIOrder>(o => ({ ...o, items: undefined }));
+        this.orders = (first.rows || []).map(o => ({ ...o, items: undefined }));
+
         this.cursor = first.nextCursor ?? null;
         this.hasMore = !!this.cursor;
 
         this.summary = this.buildSummaryFromOrders(this.orders);
         if (first.total != null) this.summary.total = first.total;
 
-        // ✅ load items/images for first page too
         this.loadItemsInBatches(this.orders, 8);
       }
 
-      // load remaining pages
       while (this.cursor) {
         const page = await firstValueFrom(
-          this.ordersSvc.getOrdersPage({ limit: this.pageSize, cursor: this.cursor })
+          this.ordersSvc.getOrdersPage({
+            shop: this.exportShop,
+            limit: this.pageSize,
+            cursor: this.cursor
+          })
         );
 
-        const more = page.rows.map<UIOrder>(o => ({ ...o, items: undefined }));
+        const more = (page.rows || []).map(o => ({ ...o, items: undefined }));
         if (!more.length) {
           this.cursor = null;
           this.hasMore = false;
@@ -943,17 +968,16 @@ export class OrdersBoardComponent implements OnInit {
         this.summary = this.buildSummaryFromOrders(this.orders);
         if (page.total != null) this.summary.total = page.total;
 
-        // ✅ IMPORTANT: load items/images as we go (not only at end)
-        // this prevents "no images" until finish and avoids heavy spike
         this.loadItemsInBatches(more, 8);
       }
-
     } catch (e: any) {
       this.error = e?.message ?? 'Failed to load all orders';
     } finally {
       this.loadingAll = false;
     }
   }
+
+
 
   private buildSummaryFromOrders(list: Order[]): OrdersSummary {
     const sum: OrdersSummary = {

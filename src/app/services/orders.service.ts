@@ -166,45 +166,116 @@ const toDate = (v?: string): Date | undefined => {
 const splitTags = (tags?: string): string[] =>
   (tags ?? '').split(',').map(s => s.trim()).filter(Boolean);
 
-const adaptRow = (x: SheetOrderRow): Order => ({
-  shopDomain: x.SHOP_DOMAIN,
-  orderId: String(x.ORDER_ID),
-  orderName: x.ORDER_NAME,
-  createdAt: toDate(x.CREATED_AT),
-  updatedAt: toDate(x.UPDATED_AT),
-  cancelledAt: toDate(x.CANCELLED_AT),
-  fulfillmentStatus: (x.FULFILLMENT_STATUS ?? '') as FulfillmentStatus | string,
-  financialStatus: (x.FINANCIAL_STATUS ?? '') as FinancialStatus | string,
-  paymentGateway: x.PAYMENT_GATEWAY,
-  shippingMethod: x.SHIPPING_METHOD,
-  shipTo: {
-    name: x.SHIP_NAME,
-    address1: x.SHIP_ADDRESS1,
-    address2: x.SHIP_ADDRESS2,
-    city: x.SHIP_CITY,
-    province: x.SHIP_PROVINCE,
-    zip: x.SHIP_ZIP,
-    country: x.SHIP_COUNTRY,
-    phone: x.SHIP_PHONE,
-  },
-  tags: splitTags(x.TAGS),
-  total: toNumber(x.TOTAL),
-  currency: x.CURRENCY,
-  customerEmail: x.CUSTOMER_EMAIL,
+const adaptRow = (x: any): Order => {
+  // ✅ accept: UPPER, camelCase, snake_case
+  const shopDomain =
+    x.SHOP_DOMAIN ?? x.shopDomain ?? x.shop_domain ?? x.shop ?? x.SHOP;
 
-  note: x.NOTE,
-  noteAttributes: parseJson<{ name: string; value: any }[]>(x.NOTE_ATTRIBUTES) || [],
-  sourceName: x.SOURCE_NAME,
-  discountCodes: splitTags(x.DISCOUNT_CODES),
-  deliverBy: x.DELIVER_BY ? x.DELIVER_BY.slice(0, 10) : null,
-  noteLocal: (x.NOTE_LOCAL || '').toString().trim() || null,
-});
+  const orderId =
+    x.ORDER_ID ?? x.orderId ?? x.order_id ?? x.id ?? x.ORDERID;
+
+  const orderName =
+    x.ORDER_NAME ?? x.orderName ?? x.order_name ?? x.name;
+
+  const createdAt =
+    x.CREATED_AT ?? x.createdAt ?? x.created_at;
+
+  const updatedAt =
+    x.UPDATED_AT ?? x.updatedAt ?? x.updated_at;
+
+  const cancelledAt =
+    x.CANCELLED_AT ?? x.cancelledAt ?? x.cancelled_at;
+
+  const fulfillmentStatus =
+    x.FULFILLMENT_STATUS ?? x.fulfillmentStatus ?? x.fulfillment_status ?? '';
+
+  const financialStatus =
+    x.FINANCIAL_STATUS ?? x.financialStatus ?? x.financial_status ?? '';
+
+  const shippingMethod =
+    x.SHIPPING_METHOD ?? x.shippingMethod ?? x.shipping_method ?? '';
+
+  const tagsRaw =
+    x.TAGS ?? x.tags ?? x.tags_raw ?? '';
+
+  const totalRaw =
+    x.TOTAL ?? x.total ?? x.total_price ?? x.total_raw;
+
+  const currency =
+    x.CURRENCY ?? x.currency ?? x.currency_code;
+
+  const shipToObj = x.shipTo ?? x.ship_to ?? {
+    name: x.SHIP_NAME ?? x.ship_name,
+    address1: x.SHIP_ADDRESS1 ?? x.ship_address1,
+    address2: x.SHIP_ADDRESS2 ?? x.ship_address2,
+    city: x.SHIP_CITY ?? x.ship_city,
+    province: x.SHIP_PROVINCE ?? x.ship_province,
+    zip: x.SHIP_ZIP ?? x.ship_zip,
+    country: x.SHIP_COUNTRY ?? x.ship_country,
+    phone: x.SHIP_PHONE ?? x.ship_phone,
+  };
+
+  // tags ممكن تكون string أو array
+  const tags = Array.isArray(tagsRaw)
+    ? tagsRaw.map((t: any) => String(t).trim()).filter(Boolean)
+    : splitTags(String(tagsRaw || ''));
+
+  return {
+    shopDomain: String(shopDomain || '').toLowerCase().trim(),
+    orderId: String(orderId || '').trim(),
+    orderName: orderName ? String(orderName) : undefined,
+
+    createdAt: createdAt ? toDate(String(createdAt)) : undefined,
+    updatedAt: updatedAt ? toDate(String(updatedAt)) : undefined,
+    cancelledAt: cancelledAt ? toDate(String(cancelledAt)) : undefined,
+
+    fulfillmentStatus: String(fulfillmentStatus || ''),
+    financialStatus: String(financialStatus || ''),
+
+    paymentGateway: x.PAYMENT_GATEWAY ?? x.paymentGateway ?? x.payment_gateway,
+    shippingMethod: String(shippingMethod || ''),
+
+    shipTo: {
+      name: shipToObj?.name,
+      address1: shipToObj?.address1,
+      address2: shipToObj?.address2,
+      city: shipToObj?.city,
+      province: shipToObj?.province,
+      zip: shipToObj?.zip,
+      country: shipToObj?.country,
+      phone: shipToObj?.phone,
+    },
+
+    tags,
+    total: toNumber(totalRaw),
+    currency,
+    customerEmail: x.CUSTOMER_EMAIL ?? x.customerEmail ?? x.customer_email,
+
+    note: x.NOTE ?? x.note,
+    noteAttributes:
+      parseJson<{ name: string; value: any }[]>(
+        x.NOTE_ATTRIBUTES ?? x.noteAttributes ?? x.note_attributes
+      ) || [],
+
+    sourceName: x.SOURCE_NAME ?? x.sourceName ?? x.source_name,
+    discountCodes: Array.isArray(x.discountCodes)
+      ? x.discountCodes
+      : splitTags(x.DISCOUNT_CODES ?? x.discount_codes),
+
+    deliverBy: (x.DELIVER_BY ?? x.deliverBy ?? x.deliver_by)
+      ? String(x.DELIVER_BY ?? x.deliverBy ?? x.deliver_by).slice(0, 10)
+      : null,
+
+    noteLocal: String(x.NOTE_LOCAL ?? x.noteLocal ?? x.note_local ?? '').trim() || null,
+  };
+};
+
 
 @Injectable({ providedIn: 'root' })
 export class OrdersService {
   private base = (environment.API_BASE_URL || '').replace(/\/$/, '');
 
-  private itemsCache = new Map<string, OrderItem[]>();
+  private itemsCache$ = new Map<string, Observable<OrderItem[]>>();
 
   constructor(private http: HttpClient) { }
 
@@ -312,10 +383,7 @@ export class OrdersService {
     let params = new HttpParams();
     if (opts.shop) params = params.set('shop', opts.shop);
     if (opts.status) params = params.set('status', String(opts.status));
-
-    // ✅ ADD THIS
     if (opts.limit) params = params.set('limit', String(opts.limit));
-
     if (opts.search) params = params.set('search', String(opts.search));
     if (opts.cursor) params = params.set('cursor', String(opts.cursor));
     if (opts.refresh) params = params.set('refresh', '1').set('ts', String(Date.now()));
@@ -328,15 +396,32 @@ export class OrdersService {
 
     return this.http.get<any>(`${this.base}/api/orders/page`, { params }).pipe(
       map((res: any): OrdersPage => {
-        const items = Array.isArray(res?.items) ? res.items : [];
-        const rows = this.clientFilter(items.map(adaptRow), opts);
-        const nextCursor = typeof res?.nextCursor === 'string' ? res.nextCursor : null;
-        const total = typeof res?.total === 'number' ? res.total : undefined;
+        // ✅ backend بيرجع items (snake_case) مثل اللي بالصورة
+        const raw = Array.isArray(res?.items) ? res.items : [];
+        console.log("RAW ITEM SAMPLE", res?.items?.[0]);
+
+        // ✅ تطبيع واحد فقط
+        const rows = this.clientFilter(raw.map(adaptRow), opts);
+        const mapped = raw.map(adaptRow);
+        console.log("MAPPED ITEM SAMPLE", mapped?.[0]);
+
+        // ✅ backend بيرجع nextCursor (مش next_cursor)
+        const nextCursor =
+          typeof res?.nextCursor === 'string'
+            ? res.nextCursor
+            : (typeof res?.next_cursor === 'string' ? res.next_cursor : null);
+
+        const total =
+          typeof res?.total === 'number'
+            ? res.total
+            : undefined;
+
         return { rows, nextCursor, total };
       }),
       catchError(() => of({ rows: [], nextCursor: null, total: 0 }))
     );
   }
+
 
 
   // ----------------------------
@@ -369,24 +454,27 @@ export class OrdersService {
   // ----------------------------
   getOrderItems(shop: string, orderId: string | number): Observable<OrderItem[]> {
     const key = `${shop}|${orderId}`;
-    if (this.itemsCache.has(key)) return of(this.itemsCache.get(key)!);
+
+    // ✅ cached observable
+    const cached = this.itemsCache$.get(key);
+    if (cached) return cached;
 
     const params = new HttpParams()
       .set('shop', shop)
       .set('order_id', String(orderId));
 
-    return this.http
+    const req$ = this.http
       .get<{ ok: boolean; items?: OrderItem[] }>(`${this.base}/api/order-items`, { params })
       .pipe(
         catchError(() => of({ ok: false, items: [] })),
         map(r => Array.isArray(r?.items) ? r.items : []),
-        map(list => {
-          this.itemsCache.set(key, list);
-          return list;
-        }),
         shareReplay(1)
       );
+
+    this.itemsCache$.set(key, req$);
+    return req$;
   }
+
 
   // ----------------------------
   // Client-side filtering (unchanged)
