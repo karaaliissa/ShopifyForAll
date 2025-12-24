@@ -686,24 +686,6 @@ export class OrdersBoardComponent implements OnInit {
         if (!r?.ok) {
           o.tags = prev;
         } else {
-          // ✅ If user chose "Shipped", trigger Shopify fulfillment
-          if (value.toLowerCase() === 'shipped') {
-            const ok = confirm('Mark all items as fulfilled in Shopify for this order?');
-            if (ok) {
-              this.ordersSvc.fulfillOrder(o.shopDomain, o.orderId).subscribe({
-                next: (res) => {
-                  if (!res.ok) {
-                    alert('Fulfillment failed: ' + (res.error || 'Unknown error'));
-                  } else {
-                    // maybe refetch or update tag in UI
-                  }
-                },
-                error: (err) => {
-                  alert('Network error while fulfilling: ' + (err?.message || err));
-                }
-              });
-            }
-          }
 
         }
       },
