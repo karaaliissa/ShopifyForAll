@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 248 250 252;        /* slate-50 */
+  --card: 255 255 255;      /* white */
+  --text: 15 23 42;         /* slate-900 */
+  --muted: 71 85 105;       /* slate-600 */
+  --border: 226 232 240;    /* slate-200 */
+
+  --card-rgb: var(--card);
+
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --bg: 2 6 23;             /* slate-950 */
+  --card: 15 23 42;         /* slate-900 */
+  --text: 226 232 240;      /* slate-200 */
+  --muted: 148 163 184;     /* slate-400 */
+  --border: 51 65 85;       /* slate-700 */
+
+  --card-rgb: var(--card);
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: rgb(var(--bg));
+  color: rgb(var(--text));
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+@media print {
+  :root, :root[data-theme="dark"] {
+    --bg: 255 255 255;
+    --card: 255 255 255;
+    --text: 0 0 0;
+    --muted: 60 60 60;
+    --border: 200 200 200;
+  }
+
+  body { background: white !important; }
+  a { text-decoration: none !important; }
+  .no-print, .print\\:hidden { display: none !important; }
+  .print\\:block { display: block !important; }
+  .print\\:table { display: table !important; }
+
+  @page { margin: 12mm; }
+}
