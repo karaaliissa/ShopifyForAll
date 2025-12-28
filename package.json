@@ -33,7 +33,7 @@
     "@angular/compiler-cli": "^19.0.0",
     "@angular/pwa": "^19.2.14",
     "@angular/service-worker": "^19.2.14",
-    "@tailwindcss/postcss": "^4.1.14",
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/jasmine": "~5.1.0",
     "jasmine-core": "~5.4.0",
     "karma": "~6.4.0",
